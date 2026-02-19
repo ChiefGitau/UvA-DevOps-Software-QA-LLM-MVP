@@ -68,7 +68,7 @@ if uploaded_file is not None:
 
     else:
         # Handle single file
-        st.subheader("📄 File Contents")
+        st.subheader("File Contents")
 
         try:
             # Try to read as text
@@ -101,7 +101,7 @@ if uploaded_file is not None:
         )
 
 else:
-    st.info("👆 Please upload a file to get started")
+    st.info("Please upload a file to get started")
 
     # Display example usage
     with st.expander("ℹ️ How to use"):
