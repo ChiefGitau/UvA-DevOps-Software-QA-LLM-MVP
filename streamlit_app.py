@@ -1,7 +1,11 @@
 import streamlit as st
 import zipfile
-import io
-from pathlib import Path
+import time
+import random
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 st.title("File Reader Application")
 st.write("Upload a single file or a zip file to view its contents")
@@ -13,8 +17,53 @@ uploaded_file = st.file_uploader(
     help="Upload a single file or a zip file"
 )
 
+def show_sample_analysis():
+    st.subheader("Sample Analysis")
+
+    labels = random.sample(["Category A", "Category B", "Category C", "Category D", "Category E"], 4)
+    sizes = [random.randint(10, 50) for _ in range(4)]
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        fig1, ax1 = plt.subplots(figsize=(4, 4))
+        ax1.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90,
+                colors=plt.cm.Pastel1.colors[:4])
+        ax1.axis('equal')
+        ax1.set_title("Distribution")
+        st.pyplot(fig1)
+        plt.close(fig1)
+
+    with col2:
+        fig2, ax2 = plt.subplots(figsize=(4, 4))
+        bar_labels = [f"Group {chr(65+i)}" for i in range(5)]
+        bar_values = [random.randint(20, 100) for _ in range(5)]
+        bars = ax2.bar(bar_labels, bar_values,
+                       color=plt.cm.Pastel2.colors[:5], edgecolor='gray')
+        ax2.set_title("Frequency")
+        ax2.set_ylabel("Count")
+        for bar, val in zip(bars, bar_values):
+            ax2.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 1,
+                     str(val), ha='center', va='bottom', fontsize=9)
+        st.pyplot(fig2)
+        plt.close(fig2)
+
+
 if uploaded_file is not None:
-    # Display file information
+
+    with st.spinner("Processing your file..."):
+        progress = st.progress(0)
+        for i in range(100):
+            time.sleep(0.01)
+            progress.progress(i + 1)
+        progress.empty()
+    st.success("File uploaded successfully!")
+
+    show_sample_analysis()
+
+    st.divider()
+
+
     st.subheader("File Information")
     file_details = {
         "Filename": uploaded_file.name,
@@ -23,23 +72,23 @@ if uploaded_file is not None:
     }
     st.json(file_details)
 
-    # Check if the file is a zip file
+
     if uploaded_file.name.endswith('.zip'):
         st.subheader(" Zip File Contents")
 
         try:
-            # Read the zip file
+
             with zipfile.ZipFile(uploaded_file, 'r') as zip_ref:
                 # List all files in the zip
                 file_list = zip_ref.namelist()
                 st.write(f"**Number of files:** {len(file_list)}")
 
-                # Display file list
+
                 st.write("**Files in archive:**")
                 for file_name in file_list:
                     st.write(f"- {file_name}")
 
-                # Let user select a file to view
+
                 if file_list:
                     selected_file = st.selectbox(
                         "Select a file to preview",
@@ -51,7 +100,7 @@ if uploaded_file is not None:
                             with zip_ref.open(selected_file) as file:
                                 content = file.read()
 
-                                # Try to decode as text
+
                                 try:
                                     text_content = content.decode('utf-8')
                                     st.code(text_content, language=None)
@@ -67,18 +116,18 @@ if uploaded_file is not None:
             st.error(f"Error processing zip file: {str(e)}")
 
     else:
-        # Handle single file
+
         st.subheader("File Contents")
 
         try:
-            # Try to read as text
+
             content = uploaded_file.read()
 
             try:
                 text_content = content.decode('utf-8')
                 st.code(text_content, language=None)
 
-                # Show line count
+
                 line_count = len(text_content.splitlines())
                 st.info(f"Total lines: {line_count}")
 
@@ -89,7 +138,7 @@ if uploaded_file is not None:
         except Exception as e:
             st.error(f"Error reading file: {str(e)}")
 
-        # Reset file pointer for potential re-reading
+
         uploaded_file.seek(0)
 
         # Download button
