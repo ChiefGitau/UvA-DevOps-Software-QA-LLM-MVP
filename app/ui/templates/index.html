@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>AI DevSecOps Pipeline</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f8fafc;
+    }
+
+    h1 {
+      color: #1e293b;
+    }
+
+    h2 {
+      margin-top: 30px;
+      color: #334155;
+    }
+
+    .section {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    button {
+      padding: 8px 14px;
+      margin: 5px 0;
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #1d4ed8;
+    }
+
+    input[type="text"] {
+      width: 60%;
+      padding: 6px;
+      margin-bottom: 10px;
+    }
+
+    #fileList, #analyzerList {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #e2e8f0;
+      padding: 8px;
+      border-radius: 6px;
+      background: #f1f5f9;
+    }
+
+    pre {
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 12px;
+      border-radius: 6px;
+      overflow-x: auto;
+      font-size: 13px;
+    }
+
+    #status {
+      margin-top: 10px;
+      font-weight: bold;
+      color: #0f172a;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>AI-Enhanced DevSecOps Pipeline</h1>
+
+<div class="section">
+  <h2>1. Target Source</h2>
+
+  <input type="file" id="zipFile" />
+  <button onclick="uploadZip()">Upload ZIP</button>
+
+  <br><br>
+
+  <input type="text" id="gitUrl" placeholder="Enter GitHub Repository URL" />
+  <button onclick="cloneRepo()">Clone Repository</button>
+</div>
+
+<div class="section">
+  <h2>2. Select Files to Analyse</h2>
+  <div id="fileList"></div>
+</div>
+
+<div class="section">
+  <h2>3. Select Static Analyzers</h2>
+  <div id="analyzerList"></div>
+</div>
+
+<div class="section">
+  <h2>4. Pipeline Actions</h2>
+  <button onclick="analyse()">Run Analysis</button>
+  <button onclick="repair()">Run AI Repair</button>
+</div>
+
+<div class="section">
+  <h2>5. Unified Findings Report</h2>
+  <pre id="reportOutput"></pre>
+</div>
+
+<div class="section">
+  <h2>6. Verification Summary</h2>
+  <pre id="verificationOutput"></pre>
+</div>
+
+<div id="status">Initializing...</div>
+
+<script src="static/app.js"></script>
+
+</body>
+</html>

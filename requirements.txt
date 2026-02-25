@@ -1,2 +1,12 @@
 streamlit==1.31.0
 matplotlib
+
+# Added by Mohssin
+fastapi==0.115.0
+uvicorn==0.30.6
+pydantic==2.8.2
+python-multipart==0.0.9
+gitpython==3.1.43
+jinja2==3.1.4
+
+openai==1.40.0
