@@ -1,32 +1,46 @@
-from pathlib import Path
-import shutil
-import subprocess
+from __future__ import annotations
 
-from app.core.security import safe_extract_zip
+import re
+import shutil
+from pathlib import Path
+
+from git import Repo
+
 from app.services.session_service import SessionService
 
 
 class RepoService:
     @staticmethod
-    def prepare_from_upload(session_id: str, archive_path: Path) -> Path:
-        """Extract uploaded zip into workspace_raw."""
-        raw = SessionService.workspace_raw_dir(session_id)
-        shutil.rmtree(raw, ignore_errors=True)
-        raw.mkdir(parents=True, exist_ok=True)
+    def normalize_git_url(url: str) -> str:
+        """
+        Support both HTTPS and SSH-ish GitHub URLs.
+        In containers, SSH keys are often missing, so prefer HTTPS.
+        """
+        u = url.strip()
 
-        safe_extract_zip(archive_path, raw)
-        return raw
+        # git@github.com:Owner/Repo.git -> https://github.com/Owner/Repo.git
+        m = re.match(r"^git@github\.com:(.+)$", u)
+        if m:
+            return f"https://github.com/{m.group(1)}"
+
+        return u
 
     @staticmethod
-    def prepare_from_github(session_id: str, url: str) -> Path:
-        """Shallow-clone a GitHub repo into workspace_raw."""
-        raw = SessionService.workspace_raw_dir(session_id)
-        shutil.rmtree(raw, ignore_errors=True)
-        raw.mkdir(parents=True, exist_ok=True)
+    def clone_into_session(session_id: str, git_url: str) -> None:
+        dest = SessionService.workspace_raw_dir(session_id)
+        dest.mkdir(parents=True, exist_ok=True)
 
-        subprocess.run(
-            ["git", "clone", "--depth", "1", url, str(raw)],
-            check=True,
-            timeout=120,
-        )
-        return raw
+        # Ensure empty
+        if any(dest.iterdir()):
+            shutil.rmtree(dest)
+            dest.mkdir(parents=True, exist_ok=True)
+
+        url = RepoService.normalize_git_url(git_url)
+
+        # Shallow clone for speed
+        Repo.clone_from(url, dest, depth=1)
+
+        # Optional: remove .git directory (keeps workspace clean)
+        git_dir = dest / ".git"
+        if git_dir.exists():
+            shutil.rmtree(git_dir, ignore_errors=True)
