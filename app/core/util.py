@@ -19,6 +19,3 @@ def run_cmd(cmd: Sequence[str], cwd: Path, timeout_sec: int = 60) -> CmdResult:
         timeout=timeout_sec
     )
     return CmdResult(p.returncode, p.stdout or "", p.stderr or "")
-
-def tool_exists(name: str) -> bool:
-    return shutil.which(name) is not None
