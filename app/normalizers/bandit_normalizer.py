@@ -5,6 +5,7 @@ from pathlib import Path
 
 from app.domain.models import Finding
 from .base import ToolNormalizer, NormalizationContext
+from .util import get_snippet, get_rel_path
 
 
 class BanditNormalizer(ToolNormalizer):
@@ -29,7 +30,7 @@ class BanditNormalizer(ToolNormalizer):
             line = r.get("line_number")
 
             # Normalize file path in a way snippet lookup can still find it
-            file_rel = _to_workspace_relative(ctx.workspace_dir, filename_raw)
+            file_rel = get_rel_path(ctx.workspace_dir, filename_raw)
 
             sev = (r.get("issue_severity") or "LOW").upper()
             conf = (r.get("issue_confidence") or "LOW").upper()
@@ -37,7 +38,7 @@ class BanditNormalizer(ToolNormalizer):
             rule = r.get("test_id") or r.get("test_name")
 
             # Prefer snippet from workspace; fallback to bandit 'code' when snippet not possible
-            snippet = _snippet(ctx.workspace_dir, file_rel, int(line) if line else None, context=2)
+            snippet = get_snippet(ctx.workspace_dir, file_rel, int(line) if line else None, context=2)
             if not snippet:
                 code = r.get("code")
                 snippet = str(code) if code else None
@@ -59,7 +60,7 @@ class BanditNormalizer(ToolNormalizer):
         return out
 
 
-def _to_workspace_relative(workspace: Path, filename: str) -> str:
+def __to_workspace_relative(workspace: Path, filename: str) -> str:
     """
     Convert bandit filename to a path relative to workspace when possible.
     Handles absolute paths, './x.py', and already-relative paths.
@@ -81,24 +82,3 @@ def _to_workspace_relative(workspace: Path, filename: str) -> str:
             return p.name
 
     return p.as_posix()
-
-
-def _snippet(workspace: Path, rel_file: str, line: int | None, context: int = 2) -> str | None:
-    if not rel_file or not line or line < 1:
-        return None
-
-    fp = workspace / rel_file
-    if not fp.exists() or not fp.is_file():
-        return None
-
-    try:
-        lines = fp.read_text(encoding="utf-8", errors="replace").splitlines()
-        start = max(1, line - context)
-        end = min(len(lines), line + context)
-        chunk = []
-        for i in range(start, end + 1):
-            prefix = ">> " if i == line else "   "
-            chunk.append(f"{prefix}{i:>4}: {lines[i-1]}")
-        return "\n".join(chunk)
-    except Exception:
-        return None
