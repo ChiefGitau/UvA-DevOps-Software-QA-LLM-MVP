@@ -1,7 +1,6 @@
-import pytest
-import zipfile
 import io
-from pathlib import Path
+import zipfile
+import pytest
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -21,16 +20,9 @@ def client():
 
 @pytest.fixture
 def sample_zip() -> bytes:
-    """Create an in-memory zip containing a buggy Python file."""
+    """Create an in-memory zip containing a small Python project."""
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as zf:
         zf.writestr("sample/hello.py", 'import os\npassword = "secret123"\nprint(password)\n')
         zf.writestr("sample/util.py", "def add(a, b):\n    return a + b\n")
     return buf.getvalue()
-
-
-@pytest.fixture
-def session_id(client) -> str:
-    """Create a fresh session and return its ID."""
-    res = client.post("/api/session")
-    return res.json()["session_id"]
