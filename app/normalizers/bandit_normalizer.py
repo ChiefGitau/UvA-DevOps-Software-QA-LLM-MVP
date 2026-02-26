@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from app.domain.models import Finding
 from .base import ToolNormalizer, NormalizationContext
@@ -58,27 +57,3 @@ class BanditNormalizer(ToolNormalizer):
             )
 
         return out
-
-
-def __to_workspace_relative(workspace: Path, filename: str) -> str:
-    """
-    Convert bandit filename to a path relative to workspace when possible.
-    Handles absolute paths, './x.py', and already-relative paths.
-    """
-    if not filename:
-        return ""
-
-    # strip leading "./"
-    s = filename.replace("\\", "/")
-    if s.startswith("./"):
-        s = s[2:]
-
-    p = Path(s)
-    if p.is_absolute():
-        try:
-            return p.relative_to(workspace).as_posix()
-        except Exception:
-            # If it's absolute but not under workspace, just use the basename as best effort
-            return p.name
-
-    return p.as_posix()
