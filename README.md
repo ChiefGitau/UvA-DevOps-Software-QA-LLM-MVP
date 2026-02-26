@@ -56,9 +56,9 @@ _More endpoints added per feature branch._
 
 ## Team
 
-| Name               | Role                  |
-|--------------------|-----------------------|
-| Gerard García      | Product Owner         |
-| Mohssin Assaban    | Scrum Master + DevOps |
-| Hidde Makimei      | Backend + Testing     |
-| Oriol Fernandez    | QA + Monitoring       |
+| Name               | Role                      |
+|--------------------|---------------------------|
+| Gerard García      | Product Owner  + DevOps   |
+| Mohssin Assaban    | Scrum Master + DevOps     |
+| Hidde Makimei      | Backend + Testing         |
+| Oriol Fernandez    | Backend + QA + Monitoring |
