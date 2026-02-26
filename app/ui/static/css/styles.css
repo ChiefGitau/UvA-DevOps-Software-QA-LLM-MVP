@@ -1,0 +1,67 @@
+:root {
+    --bg: #f8f9fa; --surface: #fff; --border: #dee2e6;
+    --text: #212529; --muted: #6c757d;
+    --primary: #0d6efd; --danger: #dc3545; --warning: #ffc107;
+    --success: #198754; --info: #0dcaf0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+.container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+h1 { font-size: 1.4rem; margin-bottom: 1rem; }
+h2 { font-size: 1.1rem; margin-bottom: .75rem; color: var(--muted); }
+
+/* Card layout */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem; margin-bottom: 1rem; }
+
+/* Form elements */
+.input-group { display: flex; gap: .5rem; margin-bottom: .75rem; }
+input[type="text"], input[type="file"] { flex: 1; padding: .5rem .75rem; border: 1px solid var(--border); border-radius: 6px; font-size: .9rem; }
+button { padding: .5rem 1rem; border: none; border-radius: 6px; font-size: .9rem; cursor: pointer; font-weight: 500; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: #0b5ed7; }
+.btn-primary:disabled { background: #6c9be6; cursor: not-allowed; }
+
+/* Status */
+.status { padding: .5rem .75rem; border-radius: 6px; margin-bottom: .75rem; font-size: .85rem; display: none; }
+.status.info { display: block; background: #cff4fc; color: #055160; }
+.status.error { display: block; background: #f8d7da; color: #842029; }
+.status.success { display: block; background: #d1e7dd; color: #0f5132; }
+
+/* Summary badges */
+.summary { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+.badge { padding: .25rem .6rem; border-radius: 12px; font-size: .8rem; font-weight: 600; color: #fff; }
+.badge.critical { background: var(--danger); }
+.badge.high { background: #fd7e14; }
+.badge.medium { background: var(--warning); color: #000; }
+.badge.low { background: var(--info); color: #000; }
+.badge.total { background: var(--muted); }
+
+/* Findings table */
+table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+th { background: var(--bg); text-align: left; padding: .5rem .75rem; border-bottom: 2px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
+th:hover { background: #e9ecef; }
+td { padding: .5rem .75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:hover td { background: #f8f9fa; }
+
+/* Severity pills */
+.sev { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .75rem; font-weight: 600; color: #fff; }
+.sev-CRITICAL { background: var(--danger); }
+.sev-HIGH { background: #fd7e14; }
+.sev-MEDIUM { background: var(--warning); color: #000; }
+.sev-LOW { background: var(--info); color: #000; }
+
+/* Type pills */
+.type { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: .75rem; font-weight: 500; border: 1px solid var(--border); }
+
+/* Code snippet */
+.snippet { font-family: 'SF Mono', Consolas, monospace; font-size: .78rem; white-space: pre; background: #f1f3f5; padding: .4rem; border-radius: 4px; max-width: 400px; overflow-x: auto; display: block; }
+
+/* File list */
+.file-list { max-height: 200px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: .5rem; margin-bottom: .75rem; font-size: .85rem; }
+.file-list label { display: block; padding: 2px 0; }
+.file-actions { display: flex; gap: .5rem; margin-bottom: .5rem; }
+.file-actions button { padding: .25rem .5rem; font-size: .8rem; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
+
+.hidden { display: none; }
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin .6s linear infinite; margin-right: .4rem; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
