@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 import shutil
 
 from app.services.session_service import SessionService
@@ -11,7 +10,7 @@ class SelectionService:
     def apply_selection(session_id: str, selected_files: list[str]) -> dict:
         """Copy only the selected files from workspace_raw → workspace (active)."""
         raw = SessionService.workspace_raw_dir(session_id)
-        active = SessionService.workspace_dir(session_id)
+        active = SessionService.workspace_active_dir(session_id)
 
         if not raw.exists():
             return {

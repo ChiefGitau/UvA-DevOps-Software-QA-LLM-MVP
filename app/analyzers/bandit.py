@@ -28,8 +28,9 @@ class BanditAnalyzer(StaticCodeAnalyzer):
             )
 
         # bandit writes JSON to file; stdout often empty
+        # Use resolved path for -o since cwd differs from artifact location
         r = run_cmd(
-            ["bandit", "-r", ".", "-f", "json", "-o", str(artifact)],
+            ["bandit", "-r", ".", "-f", "json", "-o", str(artifact.resolve())],
             cwd=workspace,
             timeout_sec=180,
         )
