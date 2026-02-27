@@ -1,6 +1,6 @@
 """Tests for secrets management (QALLM-19)."""
-import re
 from pathlib import Path
+import re
 
 
 # Patterns that indicate hardcoded secrets (not in demo/ which is intentionally buggy)
