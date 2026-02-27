@@ -1,4 +1,5 @@
 """Tests for session management, upload, clone, and file listing (QALLM-1, QALLM-6)."""
+
 import io
 
 
@@ -36,7 +37,10 @@ class TestUpload:
 class TestClone:
     def test_clone_creates_session(self, client):
         # Public repo example (adjust if you want to mock clone later)
-        res = client.post("/api/session/clone", json={"git_url": "https://github.com/octocat/Hello-World.git"})
+        res = client.post(
+            "/api/session/clone",
+            json={"git_url": "https://github.com/octocat/Hello-World.git"},
+        )
         # In CI this might fail if network access is restricted — accept either:
         assert res.status_code in (200, 500)
 

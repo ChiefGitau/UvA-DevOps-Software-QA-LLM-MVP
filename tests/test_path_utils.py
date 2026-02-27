@@ -1,5 +1,7 @@
 """Regression tests for normalizer path utilities."""
+
 from pathlib import Path
+
 from app.normalizers.util import get_rel_path
 
 

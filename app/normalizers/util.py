@@ -16,7 +16,7 @@ def get_snippet(workspace: Path, rel_file: str, line: int | None, context: int =
         chunk = []
         for i in range(start, end + 1):
             prefix = ">> " if i == line else "   "
-            chunk.append(f"{prefix}{i:>4}: {lines[i-1]}")
+            chunk.append(f"{prefix}{i:>4}: {lines[i - 1]}")
         return "\n".join(chunk)
     except Exception:
         return None

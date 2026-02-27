@@ -4,7 +4,8 @@ import shutil
 from pathlib import Path
 
 from app.core.util import run_cmd
-from .base import StaticCodeAnalyzer, RawToolResult
+
+from .base import RawToolResult, StaticCodeAnalyzer
 
 
 class BanditAnalyzer(StaticCodeAnalyzer):

@@ -1,10 +1,12 @@
 from __future__ import annotations
-from dataclasses import dataclass, field, asdict
-from typing import Any, Literal
+
+from dataclasses import asdict, dataclass, field
 from hashlib import sha1
+from typing import Any, Literal
 
 Severity = Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
 FindingType = Literal["SECURITY", "SMELL", "COMPLEXITY", "SECRET", "OTHER"]
+
 
 @dataclass
 class Finding:
@@ -28,6 +30,7 @@ class Finding:
         d["id"] = self.id
         return d
 
+
 @dataclass
 class Patch:
     finding_id: str
@@ -37,11 +40,13 @@ class Patch:
     error: str | None = None
     meta: dict[str, Any] = field(default_factory=dict)
 
+
 @dataclass
 class Summary:
     total: int
     by_severity: dict[str, int]
     by_type: dict[str, int]
+
 
 @dataclass
 class AnalysisReport:
@@ -49,11 +54,13 @@ class AnalysisReport:
     findings: list[Finding]
     summary: Summary
 
+
 @dataclass
 class RepairReport:
     session_id: str
     patches: list[Patch]
     token_usage: dict[str, Any]
+
 
 @dataclass
 class VerificationReport:

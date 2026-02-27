@@ -14,10 +14,7 @@ def test_bandit_normalizer_extracts_findings_and_snippet(tmp_path: Path):
     # Source file (snippet should be extracted from this)
     src = workspace / "demo.py"
     src.write_text(
-        "import subprocess\n"
-        "import pickle\n"
-        "x = 1\n"
-        "subprocess.call('ls', shell=True)\n",
+        "import subprocess\nimport pickle\nx = 1\nsubprocess.call('ls', shell=True)\n",
         encoding="utf-8",
     )
 

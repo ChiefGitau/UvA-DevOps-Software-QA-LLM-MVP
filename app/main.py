@@ -4,13 +4,15 @@ FastAPI application entry point.
 
 Routes and service wiring are added incrementally per feature branch.
 """
-from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+
 from pathlib import Path
 
-from app.api.session_routes import router as session_router
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+
 from app.api.analysis_routes import router as analysis_router
+from app.api.session_routes import router as session_router
 
 app = FastAPI(
     title="Quality Repair Tool",

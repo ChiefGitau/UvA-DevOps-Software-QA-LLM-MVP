@@ -2,14 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import asdict
-from pathlib import Path
 
 from app.analyzers.registry import AnalyzerRegistry
-from app.analyzers.base import RawToolResult
-from app.normalizers.registry import NormalizerRegistry
+from app.domain.models import Finding
 from app.normalizers.base import NormalizationContext
-from app.domain.models import Finding, Summary
+from app.normalizers.registry import NormalizerRegistry
 from app.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
@@ -38,10 +35,7 @@ class AnalysisService:
         reports.mkdir(parents=True, exist_ok=True)
 
         if not workspace.exists() or not any(workspace.rglob("*.py")):
-            raise RuntimeError(
-                "Active workspace has no Python files. "
-                "Did you select files first?"
-            )
+            raise RuntimeError("Active workspace has no Python files. Did you select files first?")
 
         # Phase 1: Run analyzers
         raw_results: list[dict] = []
@@ -52,7 +46,8 @@ class AnalysisService:
 
         # Persist raw index
         (reports / "analysis_raw_index.json").write_text(
-            json.dumps(raw_results, indent=2), encoding="utf-8",
+            json.dumps(raw_results, indent=2),
+            encoding="utf-8",
         )
 
         # Phase 2: Normalize → unified findings

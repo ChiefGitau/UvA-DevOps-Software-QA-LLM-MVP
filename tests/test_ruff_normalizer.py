@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from app.normalizers.ruff_normalizer import RuffNormalizer
 from app.normalizers.base import NormalizationContext
+from app.normalizers.ruff_normalizer import RuffNormalizer
 
 
 def test_ruff_normalizer_extracts_findings_and_snippet(tmp_path: Path):

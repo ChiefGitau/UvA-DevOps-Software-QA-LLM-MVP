@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import json
+from typing import Any
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Any
 
 from app.core.containers import build_analyzer_registry, build_normalizer_registry
 from app.services.analysis_service import AnalysisService
-from app.services.session_service import SessionService
 from app.services.selection_service import SelectionService
+from app.services.session_service import SessionService
 
 router = APIRouter(prefix="/api", tags=["analysis"])
 

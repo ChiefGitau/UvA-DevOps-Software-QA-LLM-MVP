@@ -10,7 +10,7 @@ services:
       - path: .env.example
         required: true
     volumes:
-      - app-data:/app/data
+      - ./data:/app/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
