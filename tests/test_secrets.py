@@ -1,7 +1,6 @@
 """Tests for secrets management (QALLM-19)."""
-from pathlib import Path
 import re
-
+from pathlib import Path
 
 # Patterns that indicate hardcoded secrets (not in demo/ which is intentionally buggy)
 SECRET_PATTERNS = [
