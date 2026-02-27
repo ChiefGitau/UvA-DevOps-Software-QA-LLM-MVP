@@ -114,7 +114,7 @@ curl http://localhost/api/session/{session_id}/report
 ### Interactive API Docs
 
 FastAPI provides auto-generated documentation at:
-- **Swagger UI:** `Comming SOON!`
+- **Swagger UI:** `http://localhost/docs`
 - **ReDoc:** `Comming SOON!`
 
 ---
