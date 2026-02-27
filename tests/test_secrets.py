@@ -1,4 +1,5 @@
 """Tests for secrets management (QALLM-19)."""
+
 import re
 from pathlib import Path
 
