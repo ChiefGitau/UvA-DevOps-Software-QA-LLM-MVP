@@ -1,6 +1,6 @@
 """Tests for unified analysis pipeline (QALLM-11) and minimal UI (QALLM-15)."""
+
 import io
-import json
 
 from app.services.analysis_service import AnalysisService
 
@@ -31,10 +31,13 @@ class TestAnalyseEndpoint:
     def test_analyse_returns_findings(self, client, sample_zip):
         sid, files = self._create_session_with_files(client, sample_zip)
 
-        res = client.post("/api/analyse", json={
-            "session_id": sid,
-            "selected_files": files,
-        })
+        res = client.post(
+            "/api/analyse",
+            json={
+                "session_id": sid,
+                "selected_files": files,
+            },
+        )
         assert res.status_code == 200
         data = res.json()
         assert "summary" in data
@@ -45,11 +48,14 @@ class TestAnalyseEndpoint:
     def test_analyse_with_specific_analyzer(self, client, sample_zip):
         sid, files = self._create_session_with_files(client, sample_zip)
 
-        res = client.post("/api/analyse", json={
-            "session_id": sid,
-            "selected_files": files,
-            "analyzers": ["bandit"],
-        })
+        res = client.post(
+            "/api/analyse",
+            json={
+                "session_id": sid,
+                "selected_files": files,
+                "analyzers": ["bandit"],
+            },
+        )
         assert res.status_code == 200
         data = res.json()
         # Only bandit findings
@@ -60,24 +66,33 @@ class TestAnalyseEndpoint:
         sid, _ = self._create_session_with_files(client, sample_zip)
 
         # Don't pass selected_files → should auto-select all
-        res = client.post("/api/analyse", json={
-            "session_id": sid,
-        })
+        res = client.post(
+            "/api/analyse",
+            json={
+                "session_id": sid,
+            },
+        )
         assert res.status_code == 200
 
     def test_analyse_unknown_session_404(self, client):
-        res = client.post("/api/analyse", json={
-            "session_id": "nonexistent",
-        })
+        res = client.post(
+            "/api/analyse",
+            json={
+                "session_id": "nonexistent",
+            },
+        )
         assert res.status_code == 404
 
     def test_summary_counts_match(self, client, sample_zip):
         sid, files = self._create_session_with_files(client, sample_zip)
 
-        res = client.post("/api/analyse", json={
-            "session_id": sid,
-            "selected_files": files,
-        })
+        res = client.post(
+            "/api/analyse",
+            json={
+                "session_id": sid,
+                "selected_files": files,
+            },
+        )
         data = res.json()
         summary = data["summary"]
         assert summary["total"] == len(data["findings"])

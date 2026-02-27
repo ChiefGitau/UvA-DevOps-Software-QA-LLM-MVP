@@ -4,7 +4,6 @@ import json
 import shutil
 import uuid
 import zipfile
-from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 

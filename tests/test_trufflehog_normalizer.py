@@ -1,8 +1,7 @@
 import json
-from pathlib import Path
 
-from app.normalizers.trufflehog_normalizer import TruffleHogNormalizer
 from app.normalizers.base import NormalizationContext
+from app.normalizers.trufflehog_normalizer import TruffleHogNormalizer
 
 
 def _ctx(tmp_path) -> NormalizationContext:
@@ -20,17 +19,17 @@ def test_normalizes_trufflehog_jsonl(tmp_path):
         "DetectorName": "AWS",
         "DetectorType": 2,
         "Verified": True,
-        "SourceMetadata": {
-            "Data": {
-                "Filesystem": {
-                    "file": "./secrets.py"
-                }
-            }
-        },
+        "SourceMetadata": {"Data": {"Filesystem": {"file": "./secrets.py"}}},
     }
     (ctx.reports_dir / "trufflehog.jsonl").write_text(json.dumps(finding) + "\n")
 
-    raw = {"tool": "trufflehog", "exit_code": 0, "stdout": "", "stderr": "", "artifact": "trufflehog.jsonl"}
+    raw = {
+        "tool": "trufflehog",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "",
+        "artifact": "trufflehog.jsonl",
+    }
     results = TruffleHogNormalizer().normalize(raw, ctx)
 
     assert len(results) == 1
@@ -49,17 +48,17 @@ def test_unverified_secret_gets_high_severity(tmp_path):
         "DetectorName": "GenericApiKey",
         "DetectorType": 55,
         "Verified": False,
-        "SourceMetadata": {
-            "Data": {
-                "Filesystem": {
-                    "file": "./config.py"
-                }
-            }
-        },
+        "SourceMetadata": {"Data": {"Filesystem": {"file": "./config.py"}}},
     }
     (ctx.reports_dir / "trufflehog.jsonl").write_text(json.dumps(finding) + "\n")
 
-    raw = {"tool": "trufflehog", "exit_code": 0, "stdout": "", "stderr": "", "artifact": "trufflehog.jsonl"}
+    raw = {
+        "tool": "trufflehog",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "",
+        "artifact": "trufflehog.jsonl",
+    }
     results = TruffleHogNormalizer().normalize(raw, ctx)
 
     assert len(results) == 1
@@ -71,7 +70,13 @@ def test_empty_artifact_returns_empty(tmp_path):
     ctx = _ctx(tmp_path)
     (ctx.reports_dir / "trufflehog.jsonl").write_text("")
 
-    raw = {"tool": "trufflehog", "exit_code": 0, "stdout": "", "stderr": "", "artifact": "trufflehog.jsonl"}
+    raw = {
+        "tool": "trufflehog",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "",
+        "artifact": "trufflehog.jsonl",
+    }
     results = TruffleHogNormalizer().normalize(raw, ctx)
 
     assert results == []
@@ -80,7 +85,13 @@ def test_empty_artifact_returns_empty(tmp_path):
 def test_missing_artifact_returns_empty(tmp_path):
     ctx = _ctx(tmp_path)
 
-    raw = {"tool": "trufflehog", "exit_code": 0, "stdout": "", "stderr": "", "artifact": "trufflehog.jsonl"}
+    raw = {
+        "tool": "trufflehog",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "",
+        "artifact": "trufflehog.jsonl",
+    }
     results = TruffleHogNormalizer().normalize(raw, ctx)
 
     assert results == []
@@ -98,7 +109,13 @@ def test_snippet_is_none_for_secret_redaction(tmp_path):
     }
     (ctx.reports_dir / "trufflehog.jsonl").write_text(json.dumps(finding) + "\n")
 
-    raw = {"tool": "trufflehog", "exit_code": 0, "stdout": "", "stderr": "", "artifact": "trufflehog.jsonl"}
+    raw = {
+        "tool": "trufflehog",
+        "exit_code": 0,
+        "stdout": "",
+        "stderr": "",
+        "artifact": "trufflehog.jsonl",
+    }
     results = TruffleHogNormalizer().normalize(raw, ctx)
 
     assert results[0].code_snippet is None

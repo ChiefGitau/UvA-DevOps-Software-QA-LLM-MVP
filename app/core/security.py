@@ -1,5 +1,7 @@
+import tarfile
+import zipfile
 from pathlib import Path
-import zipfile, tarfile
+
 
 def safe_extract_zip(zip_path: Path, dest: Path) -> None:
     with zipfile.ZipFile(zip_path) as z:
@@ -8,6 +10,7 @@ def safe_extract_zip(zip_path: Path, dest: Path) -> None:
             if not str(p).startswith(str(dest.resolve())):
                 raise ValueError("Unsafe zip: path traversal detected")
         z.extractall(dest)
+
 
 def safe_extract_tar(tar_path: Path, dest: Path) -> None:
     with tarfile.open(tar_path) as t:

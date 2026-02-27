@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from app.normalizers.radon_normalizer import RadonNormalizer
 from app.normalizers.base import NormalizationContext
+from app.normalizers.radon_normalizer import RadonNormalizer
 
 
 def test_radon_normalizer_extracts_findings_and_snippet(tmp_path: Path):
@@ -13,10 +13,7 @@ def test_radon_normalizer_extracts_findings_and_snippet(tmp_path: Path):
 
     src = workspace / "demo.py"
     src.write_text(
-        "def f(x):\n"
-        "    if x:\n"
-        "        return 1\n"
-        "    return 0\n",
+        "def f(x):\n    if x:\n        return 1\n    return 0\n",
         encoding="utf-8",
     )
 

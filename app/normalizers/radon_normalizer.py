@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 
 from app.domain.models import Finding
-from .base import ToolNormalizer, NormalizationContext
-from .util import get_snippet, get_rel_path
+
+from .base import NormalizationContext, ToolNormalizer
+from .util import get_rel_path, get_snippet
 
 
 class RadonNormalizer(ToolNormalizer):
