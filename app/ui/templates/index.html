@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quality Repair Tool</title>
+    <link rel="stylesheet" href="static/css/styles.css">
+
+</head>
+<body>
+<div class="container">
+    <h1>🔍 Quality Repair Tool</h1>
+
+    <!-- Step 1: Source Input -->
+    <div class="card">
+        <h2>1. Provide Source Code</h2>
+        <div id="status" class="status"></div>
+
+        <div class="input-group">
+            <input type="file" id="zipFile" accept=".zip">
+            <button class="btn-primary" onclick="uploadZip()">Upload ZIP</button>
+        </div>
+        <div class="input-group">
+            <input type="text" id="gitUrl" placeholder="https://github.com/owner/repo">
+            <button class="btn-primary" onclick="cloneRepo()">Clone Repo</button>
+        </div>
+    </div>
+
+    <!-- Step 2: File Selection -->
+    <div class="card hidden" id="fileSection">
+        <h2>2. Select Files to Analyse</h2>
+        <div class="file-actions">
+            <button onclick="toggleAll(true)">Select All</button>
+            <button onclick="toggleAll(false)">Deselect All</button>
+            <span id="fileCount" style="color:var(--muted);font-size:.85rem;line-height:2"></span>
+        </div>
+        <div class="file-list" id="fileList"></div>
+        <button class="btn-primary" id="analyseBtn" onclick="runAnalysis()">
+            Run Analysis (all 4 tools)
+        </button>
+    </div>
+
+    <!-- Step 3: Results -->
+    <div class="card hidden" id="resultsSection">
+        <h2>3. Findings</h2>
+        <div class="summary" id="summary"></div>
+        <div style="overflow-x:auto">
+            <table>
+                <thead>
+                    <tr>
+                        <th onclick="sortTable(0)">#</th>
+                        <th onclick="sortTable(1)">Severity</th>
+                        <th onclick="sortTable(2)">Type</th>
+                        <th onclick="sortTable(3)">Tool</th>
+                        <th onclick="sortTable(4)">File</th>
+                        <th onclick="sortTable(5)">Line</th>
+                        <th onclick="sortTable(6)">Message</th>
+                        <th>Snippet</th>
+                    </tr>
+                </thead>
+                <tbody id="findingsBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="static/js/app.js"></script>
+</body>
+</html>
