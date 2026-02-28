@@ -8,5 +8,6 @@ jinja2==3.1.4
 # Git operations
 gitpython==3.1.43
 
-# LLM (used in Sprint 2, declared early for Docker layer caching)
-openai==1.40.0
+# LLM
+openai>=2.0.0
+ollama==0.3.3  # Add the official Ollama Python SDK

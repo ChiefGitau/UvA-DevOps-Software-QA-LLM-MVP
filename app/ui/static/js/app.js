@@ -93,6 +93,11 @@ async function runAnalysis() {
         renderSummary(data.summary);
         renderFindings(currentFindings);
         show('resultsSection');
+        // Show repair section and load providers
+        if (currentFindings.length > 0) {
+            await loadProviders();
+            show('repairSection');
+        }
         setStatus(`Analysis complete: ${currentFindings.length} findings`, 'success');
     } catch (e) {
         setStatus('Analysis failed: ' + e.message, 'error');
@@ -153,4 +158,87 @@ function sortTable(col) {
         return 0;
     });
     renderFindings(currentFindings);
+}
+
+// --- LLM Provider Selection ---
+async function loadProviders() {
+    try {
+        const res = await fetch('/api/llm/providers');
+        const data = await res.json();
+        const select = document.getElementById('providerSelect');
+        select.innerHTML = '';
+        (data.configured || []).forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name;
+            if (name === data.default) opt.selected = true;
+            select.appendChild(opt);
+        });
+        // Show unconfigured as disabled options
+        (data.available || []).filter(n => !(data.configured || []).includes(n)).forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = name + ' (not configured)';
+            opt.disabled = true;
+            select.appendChild(opt);
+        });
+    } catch (e) { console.error('Failed to load providers:', e); }
+}
+
+// --- Repair ---
+async function runRepair() {
+    const btn = document.getElementById('repairBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Repairing...';
+
+    const provider = document.getElementById('providerSelect').value;
+
+    try {
+        const res = await fetch(`/api/repair/${sessionId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider: provider }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Repair failed');
+
+        renderRepairResults(data);
+        show('repairResults');
+        setStatus(`Repair complete: ${data.repaired_count} patches applied via ${data.provider_used}`, 'success');
+    } catch (e) {
+        setStatus('Repair failed: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Repair Findings';
+    }
+}
+
+function renderRepairResults(data) {
+    const summaryEl = document.getElementById('repairSummary');
+    const tu = data.token_usage || {};
+    summaryEl.innerHTML = `
+        <span class="badge total">${(data.patches || []).length} Patches</span>
+        <span class="badge high">${data.repaired_count || 0} Applied</span>
+        <span class="badge medium">${tu.total_tokens || 0} Tokens</span>
+        <span class="badge low">${tu.remaining || 0} Remaining</span>
+        <span class="badge">${data.provider_used || '?'}</span>
+    `;
+
+    const listEl = document.getElementById('patchList');
+    const patches = data.patches || [];
+    if (!patches.length) {
+        listEl.innerHTML = '<p style="color:var(--muted)">No patches generated.</p>';
+        return;
+    }
+
+    listEl.innerHTML = patches.map((p, i) => `
+        <div class="patch-card ${p.applied ? 'patch-applied' : p.error ? 'patch-error' : 'patch-noop'}">
+            <div class="patch-header">
+                <strong>#${i + 1}</strong>
+                <span class="patch-status">${p.applied ? '✅ Applied' : p.error ? '❌ ' + escHtml(p.error) : '⏭ No change'}</span>
+            </div>
+            <p class="patch-desc">${escHtml(p.description)}</p>
+            ${p.unified_diff ? '<details><summary>Show diff</summary><pre class="diff">' + escHtml(p.unified_diff) + '</pre></details>' : ''}
+        </div>
+    `).join('');
 }

@@ -190,6 +190,21 @@ Sprint 2 adds LLM repair, verification loops, and an enhanced UI. Sprint 3 adds 
 - **Session-based workspace** — Each analysis runs in an isolated directory (`data/{session_id}/`), keeping concurrent sessions safe.
 - **Two-phase file selection** — Files are first extracted into `workspace_raw`, then user-selected files are copied to `workspace` (the active directory tools run against).
 
+### Architecture: LLM Provider Registry
+```
+            ┌──────────────────────────────────────────────┐
+            │              LLMProviderRegistry             │
+            │  .register()  .pick()  .list_configured()    │
+            ├──────────────┬───────────────────────────────┤
+            │ OpenAI       │ Anthropic                     │
+            │ Provider     │ Provider                      │
+            │ (GPT-4o-mini)│ (Claude 3.5 Haiku)           │
+            ├──────────────┴───────────────────────────────┤
+            │              LLMProvider ABC                 │
+            │  name()  is_configured()  chat()             │
+            │  LLMResponse   TokenTracker                  │
+            └──────────────────────────────────────────────┘
+```
 ---
 
 ## Project Structure

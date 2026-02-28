@@ -62,6 +62,23 @@
             </table>
         </div>
     </div>
+
+    <!-- Step 4: Repair -->
+    <div class="card hidden" id="repairSection">
+        <h2>4. LLM Repair</h2>
+        <div class="repair-controls">
+            <label for="providerSelect">Provider:</label>
+            <select id="providerSelect"></select>
+            <button class="btn-primary" id="repairBtn" onclick="runRepair()">
+                Repair Findings
+            </button>
+        </div>
+        <div class="hidden" id="repairResults">
+            <h3>Repair Results</h3>
+            <div class="summary" id="repairSummary"></div>
+            <div id="patchList"></div>
+        </div>
+    </div>
 </div>
 
 <script src="static/js/app.js"></script>
