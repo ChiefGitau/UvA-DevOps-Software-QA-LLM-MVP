@@ -1,4 +1,4 @@
-"""Tests for the /health endpoint."""
+"""Tests for the /health endpoint (QALLM-22 enhanced)."""
 
 
 def test_health_returns_200(client):
