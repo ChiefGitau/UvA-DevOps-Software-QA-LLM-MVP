@@ -53,10 +53,10 @@ class OllamaModel(LLMModel):
             return False
 
     def chat(
-            self,
-            system: str,
-            user: str,
-            tracker: TokenTracker | None = None,
+        self,
+        system: str,
+        user: str,
+        tracker: TokenTracker | None = None,
     ) -> LLMResponse:
         if not self.is_configured():
             return LLMResponse(
