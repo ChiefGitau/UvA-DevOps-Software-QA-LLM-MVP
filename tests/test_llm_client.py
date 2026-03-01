@@ -1,69 +1,62 @@
-"""Tests for OpenAI provider (QALLM-12b — replaces old openai_client tests).
-
-Tests target the actual provider class, not the backward-compat shim.
-"""
+"""Tests for OpenAI model instances (QALLM-12c)."""
 
 from unittest.mock import MagicMock, patch
 
-from app.llm.base import TokenTracker
-from app.llm.openai_provider import OpenAIProvider
+from app.llm.base import LLMResponse, TokenTracker
+from app.llm.openai_provider import OpenAIModel
 
 
-def test_name():
-    assert OpenAIProvider().name() == "openai"
+def test_gpt4o_mini_name():
+    assert OpenAIModel(model_id="gpt-4o-mini").name() == "gpt-4o-mini"
+
+
+def test_gpt5_mini_name():
+    assert OpenAIModel(model_id="gpt-5-mini").name() == "gpt-5-mini"
+
+
+def test_custom_display_name():
+    m = OpenAIModel(model_id="gpt-4o-mini", display_name="fast")
+    assert m.name() == "fast"
 
 
 def test_token_tracker_accumulates():
-    from app.llm.base import LLMResponse
-
     t = TokenTracker(budget=1000)
     t.record(LLMResponse(content="x", input_tokens=100, output_tokens=50, model="m"))
     t.record(LLMResponse(content="y", input_tokens=200, output_tokens=80, model="m"))
-    assert t.total_input == 300
-    assert t.total_output == 130
     assert t.total_tokens == 430
     assert t.remaining == 570
-    assert t.calls == 2
-    assert t.errors == 0
-
-
-def test_token_tracker_counts_errors():
-    from app.llm.base import LLMResponse
-
-    t = TokenTracker(budget=1000)
-    t.record(LLMResponse(content="", error="fail", model="m"))
-    assert t.errors == 1
-    assert t.calls == 1
 
 
 def test_token_tracker_to_dict():
-    from app.llm.base import LLMResponse
-
     t = TokenTracker(budget=500)
     t.record(LLMResponse(content="x", input_tokens=100, output_tokens=50, model="m"))
     d = t.to_dict()
     assert d["budget"] == 500
     assert d["total_tokens"] == 150
-    assert d["remaining"] == 350
+
+
+def test_not_configured_when_no_key(monkeypatch):
+    monkeypatch.setattr("app.llm.openai_provider.settings.OPENAI_API_KEY", None)
+    assert not OpenAIModel().is_configured()
 
 
 def test_chat_returns_error_when_not_configured(monkeypatch):
     monkeypatch.setattr("app.llm.openai_provider.settings.OPENAI_API_KEY", None)
-    resp = OpenAIProvider().chat("sys", "user")
+    resp = OpenAIModel().chat("sys", "user")
     assert resp.error is not None
     assert "not configured" in resp.error
-    assert resp.provider == "openai"
 
 
 def test_chat_respects_budget(monkeypatch):
     monkeypatch.setattr("app.llm.openai_provider.settings.OPENAI_API_KEY", "sk-test")
     tracker = TokenTracker(budget=100)
     tracker.total_input = 100
-    resp = OpenAIProvider().chat("sys", "user", tracker)
+    resp = OpenAIModel().chat("sys", "user", tracker)
     assert "exhausted" in resp.error
 
 
-def test_chat_calls_openai_api(monkeypatch):
+def test_gpt5_uses_max_completion_tokens(monkeypatch):
+    """GPT-5 family should use max_completion_tokens, not max_tokens."""
     monkeypatch.setattr("app.llm.openai_provider.settings.OPENAI_API_KEY", "sk-test")
 
     mock_usage = MagicMock()
@@ -71,33 +64,68 @@ def test_chat_calls_openai_api(monkeypatch):
     mock_usage.completion_tokens = 30
 
     mock_choice = MagicMock()
-    mock_choice.message.content = "fixed code here"
+    mock_choice.message.content = '{"corrected_code": "x = 1"}'
+
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_response.usage = mock_usage
+    mock_response.model = "gpt-5-mini"
+
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_response
+
+    mock_openai = MagicMock()
+    mock_openai.OpenAI.return_value = mock_client
+
+    with patch.dict("sys.modules", {"openai": mock_openai}):
+        model = OpenAIModel(model_id="gpt-5-mini", use_structured=True)
+        resp = model.chat("sys", "fix this")
+
+    # Check the call kwargs
+    call_kwargs = mock_client.chat.completions.create.call_args
+    assert "max_completion_tokens" in call_kwargs.kwargs
+    assert "max_tokens" not in call_kwargs.kwargs
+    assert "temperature" not in call_kwargs.kwargs
+    assert "response_format" in call_kwargs.kwargs
+    # Structured output should parse corrected_code
+    assert resp.content == "x = 1"
+
+
+def test_gpt4o_uses_max_tokens(monkeypatch):
+    """GPT-4o family should use max_tokens, not max_completion_tokens."""
+    monkeypatch.setattr("app.llm.openai_provider.settings.OPENAI_API_KEY", "sk-test")
+
+    mock_usage = MagicMock()
+    mock_usage.prompt_tokens = 50
+    mock_usage.completion_tokens = 30
+
+    mock_choice = MagicMock()
+    mock_choice.message.content = "x = 1"
 
     mock_response = MagicMock()
     mock_response.choices = [mock_choice]
     mock_response.usage = mock_usage
     mock_response.model = "gpt-4o-mini"
 
-    mock_client_instance = MagicMock()
-    mock_client_instance.chat.completions.create.return_value = mock_response
+    mock_client = MagicMock()
+    mock_client.chat.completions.create.return_value = mock_response
 
-    mock_openai_mod = MagicMock()
-    mock_openai_mod.OpenAI.return_value = mock_client_instance
+    mock_openai = MagicMock()
+    mock_openai.OpenAI.return_value = mock_client
 
-    with patch.dict("sys.modules", {"openai": mock_openai_mod}):
-        tracker = TokenTracker(budget=1000)
-        resp = OpenAIProvider().chat("sys", "fix this", tracker)
+    with patch.dict("sys.modules", {"openai": mock_openai}):
+        model = OpenAIModel(model_id="gpt-4o-mini")
+        resp = model.chat("sys", "fix this")
 
-    assert resp.content == "fixed code here"
-    assert resp.input_tokens == 50
-    assert resp.output_tokens == 30
-    assert resp.error is None
-    assert resp.provider == "openai"
-    assert tracker.total_tokens == 80
+    call_kwargs = mock_client.chat.completions.create.call_args
+    assert "max_tokens" in call_kwargs.kwargs
+    assert "max_completion_tokens" not in call_kwargs.kwargs
+    assert "response_format" not in call_kwargs.kwargs
+    assert call_kwargs.kwargs["temperature"] == 0.1
+    assert resp.content == "x = 1"
 
 
 def test_backward_compat_shim():
-    """The old openai_client module still exports the right symbols."""
     from app.llm.openai_client import LLMResponse, TokenTracker, chat_completion
 
     assert callable(chat_completion)

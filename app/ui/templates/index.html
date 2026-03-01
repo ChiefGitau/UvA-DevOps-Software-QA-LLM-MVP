@@ -67,11 +67,12 @@
     <div class="card hidden" id="repairSection">
         <h2>4. LLM Repair</h2>
         <div class="repair-controls">
-            <label for="providerSelect">Provider:</label>
+            <label for="providerSelect">Model:</label>
             <select id="providerSelect"></select>
             <button class="btn-primary" id="repairBtn" onclick="runRepair()">
                 Repair Findings
             </button>
+            <span class="repair-hint">Auto-routes by severity when left on default</span>
         </div>
         <div class="hidden" id="repairResults">
             <h3>Repair Results</h3>

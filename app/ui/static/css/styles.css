@@ -70,6 +70,7 @@ tr:hover td { background: #f8f9fa; }
 .repair-controls { display: flex; gap: .75rem; align-items: center; margin-bottom: 1rem; }
 .repair-controls label { font-size: .9rem; font-weight: 500; }
 .repair-controls select { padding: .45rem .75rem; border: 1px solid var(--border); border-radius: 6px; font-size: .9rem; background: var(--surface); }
+.repair-hint { font-size: .78rem; color: var(--muted); line-height: 2; }
 
 /* Patch cards */
 .patch-card { border: 1px solid var(--border); border-radius: 8px; padding: .75rem 1rem; margin-bottom: .5rem; }

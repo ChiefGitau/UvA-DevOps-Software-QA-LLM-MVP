@@ -160,21 +160,27 @@ function sortTable(col) {
     renderFindings(currentFindings);
 }
 
-// --- LLM Provider Selection ---
+// --- LLM Model Selection ---
 async function loadProviders() {
     try {
         const res = await fetch('/api/llm/providers');
         const data = await res.json();
         const select = document.getElementById('providerSelect');
         select.innerHTML = '';
+        // Auto option (routes by severity)
+        const autoOpt = document.createElement('option');
+        autoOpt.value = '';
+        autoOpt.textContent = 'Auto (route by severity)';
+        autoOpt.selected = true;
+        select.appendChild(autoOpt);
+        // Configured models
         (data.configured || []).forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
             opt.textContent = name;
-            if (name === data.default) opt.selected = true;
             select.appendChild(opt);
         });
-        // Show unconfigured as disabled options
+        // Unconfigured models (greyed out)
         (data.available || []).filter(n => !(data.configured || []).includes(n)).forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
@@ -182,7 +188,7 @@ async function loadProviders() {
             opt.disabled = true;
             select.appendChild(opt);
         });
-    } catch (e) { console.error('Failed to load providers:', e); }
+    } catch (e) { console.error('Failed to load models:', e); }
 }
 
 // --- Repair ---
@@ -191,7 +197,7 @@ async function runRepair() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Repairing...';
 
-    const provider = document.getElementById('providerSelect').value;
+    const provider = document.getElementById('providerSelect').value || null;
 
     try {
         const res = await fetch(`/api/repair/${sessionId}`, {

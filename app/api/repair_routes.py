@@ -29,7 +29,9 @@ class RepairRequest(BaseModel):
     )
     provider: str | None = Field(
         None,
-        description="LLM provider to use (e.g. 'openai', 'anthropic'). Falls back to LLM_PROVIDER env var.",
+        description="LLM model to use (e.g. 'gpt-4o-mini', 'gpt-5-mini', "
+        "'claude-3-5-haiku-20241022', 'ollama/llama3.1:8b'). "
+        "If omitted, auto-routes: HIGH/CRITICAL → strong model, MEDIUM/LOW → fast model.",
     )
 
 

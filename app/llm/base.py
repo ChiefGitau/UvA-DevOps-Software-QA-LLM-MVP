@@ -1,9 +1,11 @@
-"""Abstract base for LLM providers (QALLM-12b).
+"""Abstract base for LLM models (QALLM-12c).
 
-Every provider must implement a single ``chat()`` method that accepts a
-system prompt, user prompt, and optional TokenTracker.  The registry
-pattern mirrors the analyzer registry so adding a new provider is a
-one-file + one-register operation.
+Every registered model must implement the ``LLMModel`` interface.
+The registry lists individual models (gpt-4o-mini, gpt-5-mini,
+claude-3-5-haiku, ollama/llama3) — not providers.
+
+Adding a new model = one class (or one constructor call) + one
+registry.register() in containers.py.
 """
 
 from __future__ import annotations
@@ -79,15 +81,19 @@ class TokenTracker:
         }
 
 
-# Abstract provider
+# ── Abstract model interface ─────────────────────────────────────
 
 
-class LLMProvider(ABC):
-    """Interface every LLM provider must implement."""
+class LLMModel(ABC):
+    """Interface every registered LLM model must implement.
+
+    Each instance represents one callable model (e.g. gpt-4o-mini).
+    The dropdown, API, and routing all use ``name()`` as the key.
+    """
 
     @abstractmethod
     def name(self) -> str:
-        """Short identifier used in API requests, e.g. ``"openai"``."""
+        """Display name shown in the UI dropdown (e.g. 'gpt-4o-mini')."""
 
     @abstractmethod
     def is_configured(self) -> bool:
@@ -101,3 +107,7 @@ class LLMProvider(ABC):
         tracker: TokenTracker | None = None,
     ) -> LLMResponse:
         """Send a chat completion request and return the response."""
+
+
+# Backward compatibility alias
+LLMProvider = LLMModel

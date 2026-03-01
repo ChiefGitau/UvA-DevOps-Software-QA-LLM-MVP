@@ -1,12 +1,12 @@
-"""Tests for LLM provider registry (QALLM-12b)."""
+"""Tests for LLM model registry (QALLM-12c)."""
 
 import pytest
 
-from app.llm.base import LLMProvider, LLMResponse
-from app.llm.registry import LLMProviderRegistry
+from app.llm.base import LLMModel, LLMResponse
+from app.llm.registry import LLMModelRegistry
 
 
-class FakeProvider(LLMProvider):
+class FakeModel(LLMModel):
     def __init__(self, name: str = "fake", configured: bool = True):
         self._name = name
         self._configured = configured
@@ -22,61 +22,60 @@ class FakeProvider(LLMProvider):
 
 
 def test_register_and_list():
-    reg = LLMProviderRegistry()
-    reg.register(FakeProvider("a"))
-    reg.register(FakeProvider("b"))
+    reg = LLMModelRegistry()
+    reg.register(FakeModel("a"))
+    reg.register(FakeModel("b"))
     assert reg.list() == ["a", "b"]
 
 
 def test_get_existing():
-    reg = LLMProviderRegistry()
-    reg.register(FakeProvider("openai"))
-    assert reg.get("openai") is not None
-    assert reg.get("openai").name() == "openai"
+    reg = LLMModelRegistry()
+    reg.register(FakeModel("gpt-4o-mini"))
+    assert reg.get("gpt-4o-mini") is not None
 
 
 def test_get_missing_returns_none():
-    reg = LLMProviderRegistry()
+    reg = LLMModelRegistry()
     assert reg.get("nonexistent") is None
 
 
 def test_pick_raises_on_unknown():
-    reg = LLMProviderRegistry()
-    reg.register(FakeProvider("openai"))
-    with pytest.raises(ValueError, match="Unknown LLM provider"):
+    reg = LLMModelRegistry()
+    reg.register(FakeModel("gpt-4o-mini"))
+    with pytest.raises(ValueError, match="Unknown LLM model"):
         reg.pick("nonexistent")
 
 
 def test_pick_raises_on_unconfigured():
-    reg = LLMProviderRegistry()
-    reg.register(FakeProvider("openai", configured=False))
+    reg = LLMModelRegistry()
+    reg.register(FakeModel("gpt-4o-mini", configured=False))
     with pytest.raises(ValueError, match="not configured"):
-        reg.pick("openai")
+        reg.pick("gpt-4o-mini")
 
 
 def test_list_configured():
-    reg = LLMProviderRegistry()
-    reg.register(FakeProvider("a", configured=True))
-    reg.register(FakeProvider("b", configured=False))
-    reg.register(FakeProvider("c", configured=True))
+    reg = LLMModelRegistry()
+    reg.register(FakeModel("a", configured=True))
+    reg.register(FakeModel("b", configured=False))
+    reg.register(FakeModel("c", configured=True))
     assert reg.list_configured() == ["a", "c"]
 
 
 def test_get_default_returns_first_configured():
-    reg = LLMProviderRegistry()
-    reg.register(FakeProvider("a", configured=False))
-    reg.register(FakeProvider("b", configured=True))
+    reg = LLMModelRegistry()
+    reg.register(FakeModel("a", configured=False))
+    reg.register(FakeModel("b", configured=True))
     assert reg.get_default().name() == "b"
 
 
 def test_get_default_none_if_nothing_configured():
-    reg = LLMProviderRegistry()
-    reg.register(FakeProvider("a", configured=False))
+    reg = LLMModelRegistry()
+    reg.register(FakeModel("a", configured=False))
     assert reg.get_default() is None
 
 
-def test_providers_endpoint():
-    """GET /api/llm/providers returns available and configured."""
+def test_models_endpoint():
+    """GET /api/llm/providers returns model list."""
     from fastapi.testclient import TestClient
 
     from app.main import app
@@ -88,5 +87,6 @@ def test_providers_endpoint():
     assert "available" in data
     assert "configured" in data
     assert "default" in data
-    assert "openai" in data["available"]
-    assert "anthropic" in data["available"]
+    # Should have at least gpt-4o-mini and gpt-5-mini registered
+    assert "gpt-4o-mini" in data["available"]
+    assert "gpt-5-mini" in data["available"]

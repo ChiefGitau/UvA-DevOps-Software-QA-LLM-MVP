@@ -1,7 +1,7 @@
 """Tests for repair prompt builder (QALLM-12)."""
 
 from app.domain.models import Finding
-from app.repair.prompt_builder import SYSTEM_PROMPT, build_repair_prompt
+from app.repair.prompt_builder import SYSTEM_PROMPT, build_file_repair_prompt, build_repair_prompt
 
 
 def _make_finding(**kwargs) -> Finding:
@@ -44,5 +44,23 @@ def test_prompt_includes_task_instruction():
 
 
 def test_system_prompt_has_rules():
-    assert "expert Python" in SYSTEM_PROMPT
+    assert "senior Python" in SYSTEM_PROMPT
     assert "no markdown" in SYSTEM_PROMPT.lower() or "no explanations" in SYSTEM_PROMPT.lower()
+
+
+def test_file_repair_prompt_batches_all_findings():
+    f1 = _make_finding(line=5, message="eval() detected", rule_id="B307")
+    f2 = _make_finding(tool="ruff", type="SMELL", severity="LOW", line=1, message="unused import", rule_id="F401")
+
+    source = "import os\n\ndef foo():\n    x = eval('1')\n    return x\n"
+    prompt = build_file_repair_prompt("app/main.py", source, [f1, f2])
+
+    assert "app/main.py" in prompt
+    assert "eval() detected" in prompt
+    assert "unused import" in prompt
+    assert "import os" in prompt  # full file content included
+    assert "COMPLETE corrected file" in prompt
+    # Findings should be sorted by line
+    idx_f401 = prompt.index("F401")
+    idx_b307 = prompt.index("B307")
+    assert idx_f401 < idx_b307  # line 1 before line 5

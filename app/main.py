@@ -12,8 +12,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.analysis_routes import router as analysis_router
-from app.api.session_routes import router as session_router
 from app.api.repair_routes import router as repair_router
+from app.api.session_routes import router as session_router
 
 app = FastAPI(
     title="Quality Repair Tool",
