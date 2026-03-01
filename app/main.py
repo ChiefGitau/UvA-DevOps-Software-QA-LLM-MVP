@@ -12,6 +12,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.analysis_routes import router as analysis_router
+from app.api.repair_routes import router as repair_router
 from app.api.session_routes import router as session_router
 
 app = FastAPI(
@@ -28,6 +29,7 @@ if _static.exists():
 # API routers
 app.include_router(session_router)
 app.include_router(analysis_router)
+app.include_router(repair_router)
 
 
 @app.get("/health")
