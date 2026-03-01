@@ -11,3 +11,5 @@ gitpython==3.1.43
 # LLM
 openai>=2.0.0
 ollama==0.3.3  # Add the official Ollama Python SDK
+# used in ollama to check for backend availability
+httpx
