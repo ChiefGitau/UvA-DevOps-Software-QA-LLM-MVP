@@ -17,14 +17,7 @@ from app.normalizers.trufflehog_normalizer import TruffleHogNormalizer
 
 
 def build_analyzer_registry() -> AnalyzerRegistry:
-    return AnalyzerRegistry(
-        [
-            BanditAnalyzer(),
-            RuffAnalyzer(),
-            RadonAnalyzer(),
-            TruffleHogAnalyzer()
-        ]
-    )
+    return AnalyzerRegistry([BanditAnalyzer(), RuffAnalyzer(), RadonAnalyzer(), TruffleHogAnalyzer()])
 
 
 def build_normalizer_registry() -> NormalizerRegistry:
