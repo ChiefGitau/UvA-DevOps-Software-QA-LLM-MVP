@@ -45,6 +45,32 @@ def get_providers() -> dict[str, Any]:
     return list_providers()
 
 
+@router.get(
+    "/llm/rates",
+    summary="LLM model pricing rates",
+    response_description="Per-token pricing in USD for all known models",
+)
+def get_rates() -> dict[str, Any]:
+    """Return the pricing table used to calculate cost per repair session.
+
+    Rates are in **USD per 1,000,000 tokens** (input and output billed separately).
+    Models not listed here (e.g. local Ollama) are free.
+    """
+    from app.llm.base import MODEL_RATES
+
+    return {
+        "unit": "USD per 1,000,000 tokens",
+        "rates": {
+            model: {
+                "input_per_1m_usd": rates["input"],
+                "output_per_1m_usd": rates["output"],
+            }
+            for model, rates in MODEL_RATES.items()
+        },
+        "note": "Ollama models run locally and have no API cost.",
+    }
+
+
 @router.post(
     "/repair/{session_id}",
     summary="Repair findings via LLM",

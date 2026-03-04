@@ -119,7 +119,7 @@ curl -X POST http://localhost/api/analyse \
 
 # Check available LLM models
 curl http://localhost/api/llm/providers
-# → {"available":["gpt-4o-mini","gpt-5-mini","claude-3-5-haiku-20241022","ollama/llama3.1:8b"],
+# → {"available":["gpt-4o-mini","gpt-5-mini","claude-haiku-4-5-20251001","ollama/llama3.1:8b"],
 #    "configured":["gpt-4o-mini","gpt-5-mini"],"default":"gpt-4o-mini"}
 
 # Repair with auto model routing (strong for HIGH/CRITICAL, fast for MEDIUM/LOW)
@@ -150,7 +150,7 @@ FastAPI provides auto-generated documentation at:
 |-------|----------|------|-------|
 | `gpt-4o-mini` | OpenAI | Fast / cheap | Default for MEDIUM/LOW findings |
 | `gpt-5-mini` | OpenAI | Strong | Default for HIGH/CRITICAL; uses structured outputs |
-| `claude-3-5-haiku-20241022` | Anthropic | Fast | Good code understanding |
+| `claude-haiku-4-5-20251001` | Anthropic | Fast | Good code understanding |
 | `ollama/llama3.1:8b` | Ollama | Local / free | No API key needed, runs on your machine |
 
 ### Quick Setup
@@ -432,7 +432,7 @@ All configuration is via environment variables. Copy `.env.example` to `.env` an
 | `OPENAI_API_KEY` | _(empty)_ | OpenAI API key (enables gpt-4o-mini + gpt-5-mini) |
 | `OPENAI_MODEL` | `gpt-4o-mini` | Default OpenAI model |
 | `ANTHROPIC_API_KEY` | _(empty)_ | Anthropic API key (enables Claude) |
-| `ANTHROPIC_MODEL` | `claude-3-5-haiku-20241022` | Default Anthropic model |
+| `ANTHROPIC_MODEL` | `claude-haiku-4-5-20251001` | Default Anthropic model |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | `llama3.1:8b` | Default Ollama model |
 | `LLM_DEFAULT_MODEL` | `gpt-4o-mini` | Fallback model when none specified |
