@@ -91,9 +91,7 @@ class AnalysisService:
         pre_repair_path = reports / "findings_unified.json"
 
         if not pre_repair_path.exists():
-            raise RuntimeError(
-                "No pre-repair findings found. Run POST /api/analyse first."
-            )
+            raise RuntimeError("No pre-repair findings found. Run POST /api/analyse first.")
 
         # Load pre-repair findings and snapshot them before run() overwrites the file
         pre_dicts = json.loads(pre_repair_path.read_text(encoding="utf-8"))
