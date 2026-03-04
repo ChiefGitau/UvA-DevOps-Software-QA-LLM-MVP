@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
+from dataclasses import asdict
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app.api.analysis_routes import _analysis_service
 from app.services.repair_service import list_providers, run_repair
 from app.services.session_service import SessionService
 
@@ -96,10 +99,73 @@ def get_repair_report(session_id: str) -> dict[str, Any]:
     if not SessionService.session_exists(session_id):
         raise HTTPException(status_code=404, detail="Session not found")
 
-    import json
-
     p = SessionService.reports_dir(session_id) / "repair_report.json"
     if not p.exists():
         raise HTTPException(status_code=404, detail="No repair run yet")
+
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+@router.post(
+    "/verify/{session_id}",
+    summary="Re-run analysis to verify repairs",
+    response_description="Before/after summary with resolved, remaining, and new finding counts",
+)
+def verify(session_id: str, analyzers: list[str] | None = Query(default=None)) -> dict[str, Any]:
+    """Re-run static analysis on the repaired workspace and compare against
+    the original findings to measure how effective the LLM repair was.
+
+    **What this returns:**
+    - `before` — summary of findings from the original analysis
+    - `after` — summary of findings from the post-repair analysis
+    - `resolved` — number of findings fixed by the LLM (present before, gone after)
+    - `remaining` — findings that still exist after repair
+    - `new` — findings introduced by the LLM patches (regressions)
+    - `resolved_ids` / `new_ids` — exact finding IDs for traceability
+
+    **Prerequisite:** `POST /api/analyse` and `POST /api/repair/{session_id}`
+    must have been run first.
+    """
+    if not SessionService.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    reports = SessionService.reports_dir(session_id)
+
+    if not (reports / "findings_unified.json").exists():
+        raise HTTPException(
+            status_code=400,
+            detail="No analysis report found. Run POST /api/analyse first.",
+        )
+
+    if not (reports / "repair_report.json").exists():
+        raise HTTPException(
+            status_code=400,
+            detail="No repair report found. Run POST /api/repair/{session_id} first.",
+        )
+
+    try:
+        report = _analysis_service.verify(
+            session_id=session_id,
+            selected_tools=analyzers,
+        )
+    except RuntimeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return {"session_id": session_id, **asdict(report)}
+
+
+@router.get(
+    "/verify/{session_id}/report",
+    summary="Get persisted verification report",
+    response_description="Previously computed verification results",
+)
+def get_verification_report(session_id: str) -> dict[str, Any]:
+    """Retrieve the persisted verification report for a session."""
+    if not SessionService.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    p = SessionService.reports_dir(session_id) / "verification_report.json"
+    if not p.exists():
+        raise HTTPException(status_code=404, detail="No verification run yet")
 
     return json.loads(p.read_text(encoding="utf-8"))
