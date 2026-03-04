@@ -2,7 +2,7 @@
 
 Every registered model must implement the ``LLMModel`` interface.
 The registry lists individual models (gpt-4o-mini, gpt-5-mini,
-claude-3-5-haiku, ollama/llama3) — not providers.
+claude-haiku, ollama/llama3) — not providers.
 
 Adding a new model = one class (or one constructor call) + one
 registry.register() in containers.py.
@@ -16,6 +16,28 @@ from dataclasses import dataclass, field
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+# ── Pricing table ─────────────────────────────────────────────────
+# USD per 1,000,000 tokens (input / output).
+# Ollama models are local — no API cost.
+# Update these when provider pricing changes.
+
+MODEL_RATES: dict[str, dict[str, float]] = {
+    "gpt-4o-mini": {"input": 0.15, "output": 0.60},
+    "gpt-5-mini": {"input": 2.50, "output": 10.00},
+    "claude-haiku-4-5-20251001": {"input": 0.80, "output": 4.00},
+}
+
+
+def calculate_cost_usd(model: str, input_tokens: int, output_tokens: int) -> float:
+    """Return the USD cost for a single LLM call.
+
+    Uses ``MODEL_RATES`` for known models; returns 0.0 for unknown
+    models (e.g. local Ollama).
+    """
+    rates = MODEL_RATES.get(model, {"input": 0.0, "output": 0.0})
+    return (input_tokens * rates["input"] + output_tokens * rates["output"]) / 1_000_000
 
 
 # ── Shared data classes ──────────────────────────────────────────
@@ -35,11 +57,12 @@ class LLMResponse:
 
 @dataclass
 class TokenTracker:
-    """Accumulates token usage across multiple calls within a session."""
+    """Accumulates token usage and cost across multiple calls within a session."""
 
     budget: int = 0
     total_input: int = 0
     total_output: int = 0
+    total_cost_usd: float = 0.0
     calls: int = 0
     errors: int = 0
     history: list[dict[str, Any]] = field(default_factory=list)
@@ -56,6 +79,8 @@ class TokenTracker:
         self.calls += 1
         self.total_input += resp.input_tokens
         self.total_output += resp.output_tokens
+        call_cost = calculate_cost_usd(resp.model, resp.input_tokens, resp.output_tokens)
+        self.total_cost_usd += call_cost
         if resp.error:
             self.errors += 1
         self.history.append(
@@ -63,6 +88,7 @@ class TokenTracker:
                 "call": self.calls,
                 "input_tokens": resp.input_tokens,
                 "output_tokens": resp.output_tokens,
+                "cost_usd": round(call_cost, 8),
                 "model": resp.model,
                 "provider": resp.provider,
                 "error": resp.error,
@@ -76,6 +102,7 @@ class TokenTracker:
             "total_output_tokens": self.total_output,
             "total_tokens": self.total_tokens,
             "remaining": self.remaining,
+            "total_cost_usd": round(self.total_cost_usd, 8),
             "calls": self.calls,
             "errors": self.errors,
         }

@@ -12,7 +12,7 @@ class Settings(BaseModel):
 
     # LLM — Anthropic
     ANTHROPIC_API_KEY: str | None = os.getenv("ANTHROPIC_API_KEY")
-    ANTHROPIC_MODEL: str = os.getenv("ANTHROPIC_MODEL", "claude-3-5-haiku-20241022")
+    ANTHROPIC_MODEL: str = os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
 
     # LLM — Ollama (local)
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")

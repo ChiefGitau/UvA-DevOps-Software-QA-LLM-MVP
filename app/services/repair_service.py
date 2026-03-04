@@ -251,24 +251,44 @@ def run_repair(
         # Validate: repaired file should compile
         try:
             compile(repaired_source, filepath_rel, "exec")
-        except SyntaxError as e:
+        except SyntaxError as first_err:
             logger.warning(
-                "LLM returned invalid Python for %s: %s",
+                "LLM returned invalid Python for %s: %s — retrying once",
                 filepath_rel,
-                e,
+                first_err,
                 extra={"session_id": session_id},
             )
-            for ff in file_findings:
-                patches.append(
-                    Patch(
-                        finding_id=ff.id,
-                        description=f"LLM returned invalid Python: {e}",
-                        unified_diff="",
-                        error=f"syntax_error: {e}",
-                        meta={"model": resp.model, "provider": resp.provider},
-                    )
+            # Retry once: feed the syntax error back so the LLM can self-correct
+            retry_prompt = (
+                user_prompt
+                + f"\n\n## Your previous response had a Python syntax error:\n"
+                f"  {first_err}\n"
+                "Fix this syntax error. Ensure every 'try' block has a matching "
+                "'except' or 'finally'. Return the COMPLETE corrected file."
+            )
+            resp = llm.chat(SYSTEM_PROMPT, retry_prompt, tracker)
+            if not resp.error:
+                repaired_source = _strip_fences(resp.content)
+            try:
+                compile(repaired_source, filepath_rel, "exec")
+            except SyntaxError as e:
+                logger.warning(
+                    "LLM retry also returned invalid Python for %s: %s",
+                    filepath_rel,
+                    e,
+                    extra={"session_id": session_id},
                 )
-            continue
+                for ff in file_findings:
+                    patches.append(
+                        Patch(
+                            finding_id=ff.id,
+                            description=f"LLM returned invalid Python after retry: {e}",
+                            unified_diff="",
+                            error=f"syntax_error: {e}",
+                            meta={"model": resp.model, "provider": resp.provider},
+                        )
+                    )
+                continue
 
         # Generate diff
         diff = _make_file_diff(original_source, repaired_source, filepath_rel)
