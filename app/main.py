@@ -14,6 +14,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.analysis_routes import router as analysis_router
+from app.api.repair_routes import router as repair_router
 from app.api.session_routes import router as session_router
 from app.core.logging import setup_logging
 
@@ -90,6 +91,7 @@ async def log_requests(request: Request, call_next):
 # API routers
 app.include_router(session_router)
 app.include_router(analysis_router)
+app.include_router(repair_router)
 
 
 def _check_tools() -> dict[str, bool]:

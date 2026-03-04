@@ -20,3 +20,20 @@ ignore = ["E501"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-mock>=3.12",  # Crucial for testing LLMs without making actual API calls
+    "httpx>=0.27",        # Needed if you want to test your FastAPI endpoints
+]
+
+[tool.pytest.ini_options]
+# Tell pytest where your tests live
+testpaths = ["tests"]
+
+# Ensure your 'app' folder is recognizable as a module during tests
+pythonpath = ["."]
+
+# Default command line arguments: verbose output, shorter tracebacks
+addopts = "-v --tb=short"

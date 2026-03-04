@@ -24,8 +24,15 @@ RUN TG_VER="3.88.0" \
  && rm /tmp/trufflehog.tar.gz \
  && trufflehog --version
 
+# Install Ruff specifically for the build process
+RUN pip install ruff==0.9.7
+
 # Application code
 COPY app ./app
+
+# RUN RUFF CHECKS HERE
+# If these commands fail, the Docker build stops instantly.
+RUN ruff check ./app
 
 # Demo test data
 COPY demo ./demo
