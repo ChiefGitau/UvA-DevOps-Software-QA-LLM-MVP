@@ -40,7 +40,11 @@ class AnalysisService:
         # Phase 1: Run analyzers
         raw_results: list[dict] = []
         for analyzer in self.analyzers.pick(selected_tools):
-            logger.info("Running %s ...", analyzer.tool_name())
+            logger.info(
+                "Running %s ...",
+                analyzer.tool_name(),
+                extra={"session_id": session_id},
+            )
             result = analyzer.analyze(workspace, reports)
             raw_results.append(result.__dict__)
 
@@ -69,6 +73,11 @@ class AnalysisService:
             encoding="utf-8",
         )
 
+        logger.info(
+            "Analysis complete: %d findings",
+            len(findings),
+            extra={"session_id": session_id},
+        )
         return findings
 
     @staticmethod
