@@ -98,6 +98,11 @@ async function runAnalysis() {
             await loadProviders();
             show('repairSection');
         }
+
+        // Hide verification from a previous run when re-analysing
+        hide('verificationSection');
+        hide('verificationResults');
+
         setStatus(`Analysis complete: ${currentFindings.length} findings`, 'success');
     } catch (e) {
         setStatus('Analysis failed: ' + e.message, 'error');
@@ -108,9 +113,9 @@ async function runAnalysis() {
 }
 
 // --- Summary ---
-function renderSummary(s) {
+function renderSummary(s, targetId = 'summary') {
     if (!s) return;
-    const el = document.getElementById('summary');
+    const el = document.getElementById(targetId);
     el.innerHTML = `
         <span class="badge total">${s.total} Total</span>
         <span class="badge critical">${s.by_severity.CRITICAL || 0} Critical</span>
@@ -197,6 +202,10 @@ async function runRepair() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Repairing...';
 
+    // Reset verification state from any previous run
+    hide('verificationSection');
+    hide('verificationResults');
+
     const provider = document.getElementById('providerSelect').value || null;
 
     try {
@@ -210,7 +219,11 @@ async function runRepair() {
 
         renderRepairResults(data);
         show('repairResults');
-        setStatus(`Repair complete: ${data.repaired_count} patches applied via ${data.provider_used}`, 'success');
+        setStatus(`Repair complete: ${data.repaired_count} patches applied via ${data.provider_used}. Now run verification ↓`, 'success');
+
+        // Reveal Step 5 automatically after a successful repair
+        show('verificationSection');
+        document.getElementById('verificationSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
         setStatus('Repair failed: ' + e.message, 'error');
     } finally {
@@ -247,4 +260,70 @@ function renderRepairResults(data) {
             ${p.unified_diff ? '<details><summary>Show diff</summary><pre class="diff">' + escHtml(p.unified_diff) + '</pre></details>' : ''}
         </div>
     `).join('');
+}
+
+// --- Verification ---
+async function runVerification() {
+    const btn = document.getElementById('verifyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Re-running analysis...';
+    setStatus('Running post-repair analysis...', 'info');
+
+    try {
+        const res = await fetch(`/api/verify/${sessionId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          const detail = data.detail;
+          const msg = typeof detail === 'string' ? detail : JSON.stringify(detail);
+          throw new Error(msg || 'Verification failed');
+        }
+
+        renderVerificationResults(data);
+        show('verificationResults');
+
+        const improved = (data.before.total - data.after.total);
+        const pct = data.before.total > 0
+            ? Math.round((data.resolved / data.before.total) * 100)
+            : 0;
+
+        const msg = data.new > 0
+            ? `Verification complete: ${data.resolved} resolved, ${data.new} regressions introduced.`
+            : `Verification complete: ${pct}% of issues resolved (${data.resolved} fixed, ${data.remaining} remaining).`;
+
+        setStatus(msg, data.new > 0 ? 'error' : 'success');
+
+    } catch (e) {
+        setStatus('Verification failed: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Run Verification';
+    }
+}
+
+function renderVerificationResults(data) {
+    // Score cards
+    document.getElementById('verifyResolved').textContent = data.resolved;
+    document.getElementById('verifyRemaining').textContent = data.remaining;
+    document.getElementById('verifyNew').textContent = data.new;
+
+    // Colour the "new" card red if regressions exist
+    const newCard = document.getElementById('verifyNew').closest('.scorecard');
+    newCard.classList.toggle('scorecard-danger', data.new > 0);
+
+    // Before / after summary badges
+    renderSummary(data.before, 'verifyBefore');
+    renderSummary(data.after,  'verifyAfter');
+
+    // Regression warning
+    if (data.new > 0 && data.new_ids && data.new_ids.length) {
+        document.getElementById('regressionIds').textContent = data.new_ids.join('\n');
+        show('regressionWarning');
+        document.getElementById('regressionWarning').classList.remove('hidden');
+    } else {
+        hide('regressionWarning');
+    }
 }

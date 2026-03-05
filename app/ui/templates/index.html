@@ -80,8 +80,56 @@
             <div id="patchList"></div>
         </div>
     </div>
-</div>
 
+    <!-- Step 5: Verification -->
+    <div class="card hidden" id="verificationSection">
+      <h2>5. Verification</h2>
+      <p class="verify-intro">Re-runs all static analysis tools on the repaired code and compares results against the original findings.</p>
+      <button class="btn-primary" id="verifyBtn" onclick="runVerification()">
+        Run Verification
+      </button>
+      <div class="hidden" id="verificationResults">
+        <h3>Before vs After</h3>
+
+        <!-- Score cards row -->
+        <div class="verify-scorecards">
+          <div class="scorecard scorecard-resolved">
+            <div class="scorecard-value" id="verifyResolved">—</div>
+            <div class="scorecard-label">✅ Resolved</div>
+          </div>
+          <div class="scorecard scorecard-remaining">
+            <div class="scorecard-value" id="verifyRemaining">—</div>
+            <div class="scorecard-label">⚠️ Remaining</div>
+          </div>
+          <div class="scorecard scorecard-new">
+            <div class="scorecard-value" id="verifyNew">—</div>
+            <div class="scorecard-label">🆕 New (regressions)</div>
+          </div>
+        </div>
+
+        <!-- Before / After summary comparison -->
+        <div class="verify-comparison">
+          <div class="verify-col">
+            <h4>Before repair</h4>
+            <div class="summary" id="verifyBefore"></div>
+          </div>
+          <div class="verify-arrow">→</div>
+          <div class="verify-col">
+            <h4>After repair</h4>
+            <div class="summary" id="verifyAfter"></div>
+          </div>
+        </div>
+
+        <!-- Regression warning (only shown when new > 0) -->
+        <div class="hidden verify-regressions" id="regressionWarning">
+          <strong>⚠️ Regressions detected</strong> — the LLM introduced new issues while patching.
+          Consider re-running repair on these finding IDs:
+          <pre id="regressionIds"></pre>
+        </div>
+      </div>
+    </div>
+
+</div>
 <script src="static/js/app.js"></script>
 </body>
 </html>
