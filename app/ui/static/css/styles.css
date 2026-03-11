@@ -82,3 +82,90 @@ tr:hover td { background: #f8f9fa; }
 .patch-desc { font-size: .85rem; color: var(--muted); margin-bottom: .25rem; }
 .diff { font-family: 'SF Mono', Consolas, monospace; font-size: .78rem; white-space: pre; overflow-x: auto; background: #f1f3f5; padding: .5rem; border-radius: 4px; max-height: 300px; overflow-y: auto; }
 details summary { cursor: pointer; font-size: .85rem; color: var(--primary); margin-top: .25rem; }
+
+/* ── Step 5: Verification ─────────────────────────────────────── */
+
+.verify-intro {
+  color: var(--muted);
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.verify-scorecards {
+  display: flex;
+  gap: 1rem;
+  margin: 1.25rem 0;
+  flex-wrap: wrap;
+}
+
+.scorecard {
+  flex: 1;
+  min-width: 120px;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  text-align: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.scorecard-value {
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.scorecard-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.scorecard-resolved  .scorecard-value { color: var(--success); }
+.scorecard-remaining .scorecard-value { color: #e08600; }
+.scorecard-new       .scorecard-value { color: var(--muted); }
+.scorecard-danger    .scorecard-value { color: var(--danger); }
+
+.verify-comparison {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin: 1rem 0;
+  flex-wrap: wrap;
+}
+
+.verify-col { flex: 1; min-width: 200px; }
+
+.verify-col h4 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+
+.verify-arrow {
+  font-size: 1.8rem;
+  align-self: center;
+  color: var(--muted);
+  padding-top: 1.2rem;
+}
+
+.verify-regressions {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 6px;
+  background: #fff5f5;
+  border: 1px solid var(--danger);
+  font-size: 0.88rem;
+  color: #842029;
+}
+
+.verify-regressions pre {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--muted);
+}
