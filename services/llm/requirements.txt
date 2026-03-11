@@ -8,5 +8,7 @@ jinja2==3.1.4
 # Git operations
 gitpython==3.1.43
 
-# LLM (used in Sprint 2, declared early for Docker layer caching)
+# LLM (used in Sprint 2)
 openai==1.40.0
+ollama==0.3.1
+httpx==0.27.2
