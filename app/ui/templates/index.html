@@ -4,45 +4,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quality Repair Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="static/css/styles.css">
-
 </head>
 <body>
+
+<header class="topbar">
+    <div class="topbar-inner">
+        <div class="topbar-brand">
+            <span class="topbar-icon">⬡</span>
+            <span class="topbar-title">Quality Repair Tool</span>
+            <span class="topbar-version">v0.2</span>
+        </div>
+        <a class="topbar-link" href="/docs" target="_blank">API Docs</a>
+    </div>
+</header>
+
 <div class="container">
-    <h1>🔍 Quality Repair Tool</h1>
+
+    <!-- Step progress -->
+    <div class="steps">
+        <div class="step active" id="step1"><span class="step-num">1</span> Source</div>
+        <div class="step-divider"></div>
+        <div class="step" id="step2"><span class="step-num">2</span> Files</div>
+        <div class="step-divider"></div>
+        <div class="step" id="step3"><span class="step-num">3</span> Findings</div>
+        <div class="step-divider"></div>
+        <div class="step" id="step4"><span class="step-num">4</span> Repair</div>
+    </div>
 
     <!-- Step 1: Source Input -->
     <div class="card">
-        <h2>1. Provide Source Code</h2>
-        <div id="status" class="status"></div>
-
-        <div class="input-group">
-            <input type="file" id="zipFile" accept=".zip">
-            <button class="btn-primary" onclick="uploadZip()">Upload ZIP</button>
+        <div class="card-header">
+            <h2>Provide Source Code</h2>
+            <p class="card-sub">Upload a ZIP archive or clone a public GitHub repository.</p>
         </div>
-        <div class="input-group">
-            <input type="text" id="gitUrl" placeholder="https://github.com/owner/repo">
-            <button class="btn-primary" onclick="cloneRepo()">Clone Repo</button>
+
+        <div id="status" class="status"></div>
+        <div id="sessionBanner" class="session-banner hidden"></div>
+
+        <div class="input-row">
+            <div class="input-group">
+                <label class="input-label">ZIP Archive</label>
+                <div class="input-inline">
+                    <input type="file" id="zipFile" accept=".zip">
+                    <button class="btn-primary" id="uploadBtn" onclick="uploadZip()">Upload</button>
+                </div>
+            </div>
+            <div class="input-divider">or</div>
+            <div class="input-group">
+                <label class="input-label">GitHub URL</label>
+                <div class="input-inline">
+                    <input type="text" id="gitUrl" placeholder="https://github.com/owner/repo">
+                    <button class="btn-primary" id="cloneBtn" onclick="cloneRepo()">Clone</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Step 2: File Selection -->
     <div class="card hidden" id="fileSection">
-        <h2>2. Select Files to Analyse</h2>
+        <div class="card-header">
+            <h2>Select Files to Analyse</h2>
+            <p class="card-sub">Choose which files to include. All files are selected by default.</p>
+        </div>
         <div class="file-actions">
-            <button onclick="toggleAll(true)">Select All</button>
-            <button onclick="toggleAll(false)">Deselect All</button>
-            <span id="fileCount" style="color:var(--muted);font-size:.85rem;line-height:2"></span>
+            <button class="btn-ghost" onclick="toggleAll(true)">Select All</button>
+            <button class="btn-ghost" onclick="toggleAll(false)">Deselect All</button>
+            <span id="fileCount" class="muted-text"></span>
         </div>
         <div class="file-list" id="fileList"></div>
         <button class="btn-primary" id="analyseBtn" onclick="runAnalysis()">
-            Run Analysis (all 4 tools)
+            Run Analysis — all 4 tools
         </button>
     </div>
 
     <!-- Step 3: Results -->
     <div class="card hidden" id="resultsSection">
-        <h2>3. Findings</h2>
+        <div class="card-header">
+            <h2>Findings</h2>
+            <p class="card-sub">Click any column header to sort. Results cover security, style, complexity and secrets.</p>
+        </div>
         <div class="summary" id="summary"></div>
         <div style="overflow-x:auto">
             <table>
@@ -65,21 +109,33 @@
 
     <!-- Step 4: Repair -->
     <div class="card hidden" id="repairSection">
-        <h2>4. LLM Repair</h2>
+        <div class="card-header">
+            <h2>LLM Repair</h2>
+            <p class="card-sub">Select a model and apply AI-generated patches to the top findings.</p>
+        </div>
         <div class="repair-controls">
-            <label for="providerSelect">Model:</label>
-            <select id="providerSelect"></select>
+            <div class="repair-model">
+                <label class="input-label" for="providerSelect">Model</label>
+                <select id="providerSelect"></select>
+            </div>
             <button class="btn-primary" id="repairBtn" onclick="runRepair()">
                 Repair Findings
             </button>
-            <span class="repair-hint">Auto-routes by severity when left on default</span>
         </div>
+        <p class="repair-hint" style="margin-top:.5rem"></p>
+
         <div class="hidden" id="repairResults">
-            <h3>Repair Results</h3>
+            <div class="section-divider"></div>
+            <h3 class="results-heading">Repair Results</h3>
             <div class="summary" id="repairSummary"></div>
             <div id="patchList"></div>
         </div>
     </div>
+<<<<<<< HEAD
+=======
+
+</div>
+>>>>>>> 2cc3913 (adding aditional test)
 
     <!-- Step 5: Verification -->
     <div class="card hidden" id="verificationSection">
