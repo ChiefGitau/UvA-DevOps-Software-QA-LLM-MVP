@@ -116,9 +116,7 @@ Resources:
           ToPort: 80
           CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
-        - IpProtocol: -1 # Allow all outbound
-          FromPort: 0
-          ToPort: 65535
+        - IpProtocol: "-1"
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
@@ -135,9 +133,7 @@ Resources:
           ToPort: 65535
           SourceSecurityGroupId: !Ref ALBSecurityGroup
       SecurityGroupEgress:
-        - IpProtocol: -1 # Allow all outbound
-          FromPort: 0
-          ToPort: 65535
+        - IpProtocol: "-1"
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
@@ -164,9 +160,7 @@ Resources:
           ToPort: 2049
           SourceSecurityGroupId: !Ref ECSSecurityGroup
       SecurityGroupEgress:
-        - IpProtocol: -1
-          FromPort: 0
-          ToPort: 65535
+        - IpProtocol: "-1"
           CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
@@ -384,7 +378,6 @@ Resources:
           Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
       ServiceRegistries:
         - RegistryArn: !GetAtt SessionServiceDiscovery.Arn
-      HealthCheckGracePeriodSeconds: 60
 
   AnalysisServiceDiscovery:
     Type: AWS::ServiceDiscovery::Service
@@ -439,6 +432,8 @@ Resources:
     DependsOn:
       - EFSMountTarget0
       - EFSMountTarget1
+      - EFSAccessPoint
+      - ECSSecurityGroupIngressSelf
     Properties:
       ServiceName: analysis-service
       Cluster: !Ref ECSCluster
@@ -452,7 +447,6 @@ Resources:
           Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
       ServiceRegistries:
         - RegistryArn: !GetAtt AnalysisServiceDiscovery.Arn
-      HealthCheckGracePeriodSeconds: 60
 
   LLMServiceDiscovery:
     Type: AWS::ServiceDiscovery::Service
@@ -471,8 +465,8 @@ Resources:
       Family: !Sub "${ProjectName}-llm"
       NetworkMode: awsvpc
       RequiresCompatibilities: [FARGATE]
-      Cpu: "256"
-      Memory: "512"
+      Cpu: "512"
+      Memory: "1024"
       ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
@@ -513,6 +507,8 @@ Resources:
     DependsOn:
       - EFSMountTarget0
       - EFSMountTarget1
+      - EFSAccessPoint
+      - ECSSecurityGroupIngressSelf
     Properties:
       ServiceName: llm-service
       Cluster: !Ref ECSCluster
@@ -526,7 +522,6 @@ Resources:
           Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
       ServiceRegistries:
         - RegistryArn: !GetAtt LLMServiceDiscovery.Arn
-      HealthCheckGracePeriodSeconds: 60
 
   FrontendTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -573,3 +568,15 @@ Outputs:
   ALBURL:
     Description: "The URL of the application load balancer"
     Value: !Sub "http://${ApplicationLoadBalancer.DNSName}"
+  ECSClusterArn:
+    Description: "ECS Cluster ARN"
+    Value: !GetAtt ECSCluster.Arn
+  EFSFileSystemId:
+    Description: "EFS FileSystem ID"
+    Value: !Ref EFSFileSystem
+  LogGroupName:
+    Description: "CloudWatch Log Group"
+    Value: !Ref LogGroup
+  VPCId:
+    Description: "VPC ID"
+    Value: !Ref VPC

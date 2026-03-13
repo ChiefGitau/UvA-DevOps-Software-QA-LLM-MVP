@@ -3,13 +3,9 @@ fastapi==0.115.0
 uvicorn[standard]==0.30.6
 pydantic==2.8.2
 python-multipart==0.0.9
-jinja2==3.1.4
 
-# Git operations
-gitpython==3.1.43
-
-# LLM (used in Sprint 2)
-# Force a modern version that supports max_completion_tokens
+# LLM providers
 openai>=1.50.0
+anthropic>=0.34.0
 ollama==0.3.1
 httpx==0.27.2
