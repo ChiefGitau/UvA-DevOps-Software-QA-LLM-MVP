@@ -505,6 +505,7 @@ Resources:
 
   FrontendService:
     Type: AWS::ECS::Service
+    DependsOn: ALBListener
     Properties:
       ServiceName: frontend
       Cluster: !Ref ECSCluster
