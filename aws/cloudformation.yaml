@@ -1,0 +1,521 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation Template for Software QA LLM MVP (Fargate + EFS + ALB)"
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: "qallm-mvp"
+    Description: "Name of the project"
+  VpcCIDR:
+    Type: String
+    Default: "10.0.0.0/16"
+    Description: "CIDR block for the VPC"
+  GitHubUsername:
+    Type: String
+    Default: "ChiefGitau"
+  OpenAIApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+  AnthropicApiKey:
+    Type: String
+    NoEcho: true
+    Default: ""
+  OllamaBaseUrl:
+    Type: String
+    Default: ""
+
+Resources:
+  # --- VPC Networking ---
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-vpc"
+        - Key: Project
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: Sandbox
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-igw"
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet0:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Select [0, !Cidr [!Ref VpcCIDR, 2, 8]]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-0"
+
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Select [1, !Cidr [!Ref VpcCIDR, 2, 8]]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-1"
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-public-rt"
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  Subnet0RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet0
+      RouteTableId: !Ref PublicRouteTable
+
+  Subnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+
+  # --- Security Groups ---
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ALB Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-alb-sg"
+
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: ECS Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+        - IpProtocol: tcp
+          FromPort: 0
+          ToPort: 65535
+          SourceSecurityGroupId: !Ref ECSSecurityGroup # Self-reference
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-ecs-sg"
+
+  EFSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EFS Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 2049
+          ToPort: 2049
+          SourceSecurityGroupId: !Ref ECSSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-efs-sg"
+
+  # --- IAM Roles ---
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-task-execution-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs-tasks.amazonaws.com]
+            Action: ["sts:AssumeRole"]
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ProjectName}-task-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [ecs-tasks.amazonaws.com]
+            Action: ["sts:AssumeRole"]
+      Policies:
+        - PolicyName: EFSClientAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "elasticfilesystem:ClientMount"
+                  - "elasticfilesystem:ClientWrite"
+                  - "elasticfilesystem:ClientRootAccess"
+                Resource: "*"
+
+  # --- Storage (EFS) ---
+  EFSFileSystem:
+    Type: AWS::EFS::FileSystem
+    Properties:
+      Encrypted: true
+      FileSystemTags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-efs"
+
+  EFSMountTarget0:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SubnetId: !Ref PublicSubnet0
+      SecurityGroups: [!Ref EFSSecurityGroup]
+
+  EFSMountTarget1:
+    Type: AWS::EFS::MountTarget
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      SubnetId: !Ref PublicSubnet1
+      SecurityGroups: [!Ref EFSSecurityGroup]
+
+  EFSAccessPoint:
+    Type: AWS::EFS::AccessPoint
+    Properties:
+      FileSystemId: !Ref EFSFileSystem
+      PosixUser:
+        Gid: "1000"
+        Uid: "1000"
+      RootDirectory:
+        Path: "/data"
+        CreationInfo:
+          OwnerGid: "1000"
+          OwnerUid: "1000"
+          Permissions: "777"
+
+  # --- Load Balancer ---
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${ProjectName}-alb"
+      Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
+      SecurityGroups: [!Ref ALBSecurityGroup]
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-alb"
+
+  ALBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${ProjectName}-frontend-tg"
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref VPC
+      TargetType: ip
+      HealthCheckPath: /
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 3
+      UnhealthyThresholdCount: 3
+
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ALBTargetGroup
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  # --- ECS Cluster & Service Discovery ---
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${ProjectName}-cluster"
+
+  ServiceDiscoveryNamespace:
+    Type: AWS::ServiceDiscovery::PrivateDnsNamespace
+    Properties:
+      Name: svc
+      Vpc: !Ref VPC
+      Description: Service discovery for p4 qallm
+
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${ProjectName}"
+      RetentionInDays: 7
+
+  # --- ECS Services ---
+  SessionServiceDiscovery:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: session-service
+      DnsConfig:
+        NamespaceId: !Ref ServiceDiscoveryNamespace
+        DnsRecords:
+          - Type: A
+            TTL: 10
+
+  SessionTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-session"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: "256"
+      Memory: "512"
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: session-service
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-session:latest"
+          PortMappings:
+            - ContainerPort: 8000
+          Environment:
+            - Name: DATA_DIR
+              Value: /app/data
+          MountPoints:
+            - ContainerPath: /app/data
+              SourceVolume: app-data
+              ReadOnly: false
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: session
+      Volumes:
+        - Name: app-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EFSFileSystem
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref EFSAccessPoint
+              Iam: ENABLED
+
+  SessionService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: session-service
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref SessionTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: [!Ref ECSSecurityGroup]
+          Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
+      ServiceRegistries:
+        - RegistryArn: !GetAtt SessionServiceDiscovery.Arn
+
+  AnalysisServiceDiscovery:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: analysis-service
+      DnsConfig:
+        NamespaceId: !Ref ServiceDiscoveryNamespace
+        DnsRecords:
+          - Type: A
+            TTL: 10
+
+  AnalysisTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-analysis"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: "512"
+      Memory: "1024"
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: analysis-service
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-analysis:latest"
+          PortMappings:
+            - ContainerPort: 8000
+          Environment:
+            - Name: DATA_DIR
+              Value: /app/data
+          MountPoints:
+            - ContainerPath: /app/data
+              SourceVolume: app-data
+              ReadOnly: false
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: analysis
+      Volumes:
+        - Name: app-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EFSFileSystem
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref EFSAccessPoint
+              Iam: ENABLED
+
+  AnalysisService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: analysis-service
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref AnalysisTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: [!Ref ECSSecurityGroup]
+          Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
+      ServiceRegistries:
+        - RegistryArn: !GetAtt AnalysisServiceDiscovery.Arn
+
+  LLMServiceDiscovery:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: llm-service
+      DnsConfig:
+        NamespaceId: !Ref ServiceDiscoveryNamespace
+        DnsRecords:
+          - Type: A
+            TTL: 10
+
+  LLMTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-llm"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: "256"
+      Memory: "512"
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: llm-service
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-llm:latest"
+          PortMappings:
+            - ContainerPort: 8000
+          Environment:
+            - Name: DATA_DIR
+              Value: /app/data
+            - Name: OPENAI_API_KEY
+              Value: !Ref OpenAIApiKey
+            - Name: ANTHROPIC_API_KEY
+              Value: !Ref AnthropicApiKey
+            - Name: OLLAMA_BASE_URL
+              Value: !Ref OllamaBaseUrl
+          MountPoints:
+            - ContainerPath: /app/data
+              SourceVolume: app-data
+              ReadOnly: false
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: llm
+      Volumes:
+        - Name: app-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EFSFileSystem
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref EFSAccessPoint
+              Iam: ENABLED
+
+  LLMService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: llm-service
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref LLMTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: [!Ref ECSSecurityGroup]
+          Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
+      ServiceRegistries:
+        - RegistryArn: !GetAtt LLMServiceDiscovery.Arn
+
+  FrontendTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-frontend"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: "256"
+      Memory: "512"
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: frontend
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-frontend:latest"
+          PortMappings:
+            - ContainerPort: 80
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: frontend
+
+  FrontendService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: frontend
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref FrontendTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: [!Ref ECSSecurityGroup]
+          Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
+      LoadBalancers:
+        - ContainerName: frontend
+          ContainerPort: 80
+          TargetGroupArn: !Ref ALBTargetGroup
+
+Outputs:
+  ALBURL:
+    Description: "The URL of the application load balancer"
+    Value: !Sub "http://${ApplicationLoadBalancer.DNSName}"
