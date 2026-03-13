@@ -20,7 +20,7 @@ jobs:
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -85,6 +85,8 @@ jobs:
           capabilities: CAPABILITY_NAMED_IAM
           parameter-overrides: >-
             OpenAIApiKey=${{ secrets.OPENAI_API_KEY }},
+            AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY }},
+            OllamaBaseUrl=${{ secrets.OLLAMA_BASE_URL }},
             GitHubUsername=chiefgitau
 
       # Force ECS to pull the new 'latest' images from GHCR

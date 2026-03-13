@@ -171,6 +171,17 @@ Resources:
             Action: ["sts:AssumeRole"]
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+      Policies:
+        - PolicyName: EFSMountAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "elasticfilesystem:ClientMount"
+                  - "elasticfilesystem:ClientWrite"
+                  - "elasticfilesystem:ClientRootAccess"
+                Resource: "*"
 
   ECSTaskRole:
     Type: AWS::IAM::Role
@@ -293,6 +304,7 @@ Resources:
       Name: session-service
       DnsConfig:
         NamespaceId: !Ref ServiceDiscoveryNamespace
+        RoutingPolicy: MULTIVALUE
         DnsRecords:
           - Type: A
             TTL: 10
@@ -352,6 +364,7 @@ Resources:
           Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
       ServiceRegistries:
         - RegistryArn: !GetAtt SessionServiceDiscovery.Arn
+      HealthCheckGracePeriodSeconds: 60
 
   AnalysisServiceDiscovery:
     Type: AWS::ServiceDiscovery::Service
@@ -359,6 +372,7 @@ Resources:
       Name: analysis-service
       DnsConfig:
         NamespaceId: !Ref ServiceDiscoveryNamespace
+        RoutingPolicy: MULTIVALUE
         DnsRecords:
           - Type: A
             TTL: 10
@@ -418,6 +432,7 @@ Resources:
           Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
       ServiceRegistries:
         - RegistryArn: !GetAtt AnalysisServiceDiscovery.Arn
+      HealthCheckGracePeriodSeconds: 60
 
   LLMServiceDiscovery:
     Type: AWS::ServiceDiscovery::Service
@@ -425,6 +440,7 @@ Resources:
       Name: llm-service
       DnsConfig:
         NamespaceId: !Ref ServiceDiscoveryNamespace
+        RoutingPolicy: MULTIVALUE
         DnsRecords:
           - Type: A
             TTL: 10
@@ -490,6 +506,7 @@ Resources:
           Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
       ServiceRegistries:
         - RegistryArn: !GetAtt LLMServiceDiscovery.Arn
+      HealthCheckGracePeriodSeconds: 60
 
   FrontendTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -530,6 +547,7 @@ Resources:
         - ContainerName: frontend
           ContainerPort: 80
           TargetGroupArn: !Ref ALBTargetGroup
+      HealthCheckGracePeriodSeconds: 60
 
 Outputs:
   ALBURL:
