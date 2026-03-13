@@ -163,6 +163,11 @@ Resources:
           FromPort: 2049
           ToPort: 2049
           SourceSecurityGroupId: !Ref ECSSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Sub "${ProjectName}-efs-sg"
@@ -320,7 +325,7 @@ Resources:
         RoutingPolicy: MULTIVALUE
         DnsRecords:
           - Type: A
-            TTL: 10
+            TTL: 60
 
   SessionTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -357,13 +362,15 @@ Resources:
             TransitEncryption: ENABLED
             AuthorizationConfig:
               AccessPointId: !Ref EFSAccessPoint
-              Iam: ENABLED
+              IAM: ENABLED
 
   SessionService:
     Type: AWS::ECS::Service
-    DependsOn:
+    DependsOn: 
       - EFSMountTarget0
       - EFSMountTarget1
+      - EFSAccessPoint
+      - ECSSecurityGroupIngressSelf
     Properties:
       ServiceName: session-service
       Cluster: !Ref ECSCluster
@@ -388,7 +395,7 @@ Resources:
         RoutingPolicy: MULTIVALUE
         DnsRecords:
           - Type: A
-            TTL: 10
+            TTL: 60
 
   AnalysisTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -425,7 +432,7 @@ Resources:
             TransitEncryption: ENABLED
             AuthorizationConfig:
               AccessPointId: !Ref EFSAccessPoint
-              Iam: ENABLED
+              IAM: ENABLED
 
   AnalysisService:
     Type: AWS::ECS::Service
@@ -456,7 +463,7 @@ Resources:
         RoutingPolicy: MULTIVALUE
         DnsRecords:
           - Type: A
-            TTL: 10
+            TTL: 60
 
   LLMTaskDefinition:
     Type: AWS::ECS::TaskDefinition
@@ -499,7 +506,7 @@ Resources:
             TransitEncryption: ENABLED
             AuthorizationConfig:
               AccessPointId: !Ref EFSAccessPoint
-              Iam: ENABLED
+              IAM: ENABLED
 
   LLMService:
     Type: AWS::ECS::Service
