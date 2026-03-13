@@ -115,6 +115,11 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1 # Allow all outbound
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Sub "${ProjectName}-alb-sg"
@@ -129,6 +134,11 @@ Resources:
           FromPort: 0
           ToPort: 65535
           SourceSecurityGroupId: !Ref ALBSecurityGroup
+      SecurityGroupEgress:
+        - IpProtocol: -1 # Allow all outbound
+          FromPort: 0
+          ToPort: 65535
+          CidrIp: 0.0.0.0/0
       Tags:
         - Key: Name
           Value: !Sub "${ProjectName}-ecs-sg"
@@ -250,6 +260,9 @@ Resources:
       Name: !Sub "${ProjectName}-alb"
       Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
       SecurityGroups: [!Ref ALBSecurityGroup]
+      LoadBalancerAttributes:
+        - Key: idle_timeout.timeout_seconds
+          Value: "300"
       Tags:
         - Key: Name
           Value: !Sub "${ProjectName}-alb"
