@@ -2,9 +2,9 @@ name: CI – Lint & Test
 
 on:
   push:
-    branches: [development, main]
+    branches: [development, main, QALLM24-AWS]
   pull_request:
-    branches: [development, main]
+    branches: [development, main, QALLM24-AWS]
 
 permissions:
   contents: read

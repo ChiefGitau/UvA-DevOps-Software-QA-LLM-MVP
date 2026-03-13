@@ -12,7 +12,9 @@ services:
       llm-service:
         condition: service_healthy
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - frontend.svc
 
   session-service:
     build:
@@ -27,7 +29,9 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - session-service.svc
 
   analysis-service:
     build:
@@ -42,7 +46,9 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - analysis-service.svc
 
   llm-service:
     build:
@@ -60,7 +66,9 @@ services:
       timeout: 5s
       retries: 3
     networks:
-      - app-network
+      app-network:
+        aliases:
+          - llm-service.svc
 
 networks:
   app-network:
