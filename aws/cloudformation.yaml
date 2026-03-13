@@ -13,6 +13,10 @@ Parameters:
   GitHubUsername:
     Type: String
     Default: "ChiefGitau"
+  GitHubToken:
+    Type: String
+    NoEcho: true
+    Description: "GitHub Personal Access Token (PAT) with read:packages scope to pull from GHCR"
   OpenAIApiKey:
     Type: String
     NoEcho: true
@@ -181,6 +185,14 @@ Resources:
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
       Policies:
+        - PolicyName: SecretReader
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "secretsmanager:GetSecretValue"
+                Resource: !Ref GHCRSecret
         - PolicyName: EFSMountAccess
           PolicyDocument:
             Version: "2012-10-17"
@@ -303,6 +315,13 @@ Resources:
       Vpc: !Ref VPC
       Description: Service discovery for p4 qallm
 
+  GHCRSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${ProjectName}-ghcr-auth"
+      Description: "GHCR Authentication Token"
+      SecretString: !Sub '{"username":"${GitHubUsername}","password":"${GitHubToken}"}'
+
   LogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
@@ -334,6 +353,8 @@ Resources:
       ContainerDefinitions:
         - Name: session-service
           Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-session:latest"
+          RepositoryCredentials:
+            CredentialsParameter: !Ref GHCRSecret
           PortMappings:
             - ContainerPort: 8000
           Environment:
@@ -403,6 +424,8 @@ Resources:
       ContainerDefinitions:
         - Name: analysis-service
           Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-analysis:latest"
+          RepositoryCredentials:
+            CredentialsParameter: !Ref GHCRSecret
           PortMappings:
             - ContainerPort: 8000
           Environment:
@@ -472,6 +495,8 @@ Resources:
       ContainerDefinitions:
         - Name: llm-service
           Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-llm:latest"
+          RepositoryCredentials:
+            CredentialsParameter: !Ref GHCRSecret
           PortMappings:
             - ContainerPort: 8000
           Environment:
@@ -535,6 +560,8 @@ Resources:
       ContainerDefinitions:
         - Name: frontend
           Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-frontend:latest"
+          RepositoryCredentials:
+            CredentialsParameter: !Ref GHCRSecret
           PortMappings:
             - ContainerPort: 80
           LogConfiguration:

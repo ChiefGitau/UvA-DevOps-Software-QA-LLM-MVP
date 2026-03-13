@@ -87,7 +87,8 @@ jobs:
             OpenAIApiKey=${{ secrets.OPENAI_API_KEY }},
             AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY }},
             OllamaBaseUrl=${{ secrets.OLLAMA_BASE_URL }},
-            GitHubUsername=chiefgitau
+            GitHubUsername=chiefgitau,
+            GitHubToken=${{ secrets.PAT }}
 
       # Force ECS to pull the new 'latest' images from GHCR
       - name: Force ECS Redeployment
