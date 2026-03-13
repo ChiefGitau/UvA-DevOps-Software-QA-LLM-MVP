@@ -336,6 +336,9 @@ Resources:
 
   SessionService:
     Type: AWS::ECS::Service
+    DependsOn:
+      - EFSMountTarget0
+      - EFSMountTarget1
     Properties:
       ServiceName: session-service
       Cluster: !Ref ECSCluster
@@ -399,6 +402,9 @@ Resources:
 
   AnalysisService:
     Type: AWS::ECS::Service
+    DependsOn:
+      - EFSMountTarget0
+      - EFSMountTarget1
     Properties:
       ServiceName: analysis-service
       Cluster: !Ref ECSCluster
@@ -468,6 +474,9 @@ Resources:
 
   LLMService:
     Type: AWS::ECS::Service
+    DependsOn:
+      - EFSMountTarget0
+      - EFSMountTarget1
     Properties:
       ServiceName: llm-service
       Cluster: !Ref ECSCluster
