@@ -1,52 +1,78 @@
 services:
-  backend:
-    build: .
-    container_name: p4-backend
+  frontend:
+    build:
+      context: ./services/frontend
     ports:
-      - "8000:8000"
-    expose:
-      - "8000"
-    env_file:
-      - path: .env
-        required: true
-      - path: .env.example
-        required: true
-#    environment:
-      # Route traffic out of the container to the native Mac app
-#      - OLLAMA_BASE_URL=http://host.docker.internal:11434
-#      - OLLAMA_MODEL=${OLLAMA_MODEL:-qwen2.5:7b}
-#    networks:
-#      - llmnet
-#      - default
+      - "80:80"
+    depends_on:
+      session-service:
+        condition: service_healthy
+      analysis-service:
+        condition: service_healthy
+      llm-service:
+        condition: service_healthy
+    networks:
+      app-network:
+        aliases:
+          - frontend.svc
+
+  session-service:
+    build:
+      context: ./services/session
+    environment:
+      - DATA_DIR=/app/data
     volumes:
-      - ./data:/app/data
+      - app-data:/app/data
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
+      interval: 10s
       timeout: 5s
       retries: 3
-    restart: unless-stopped
+    networks:
+      app-network:
+        aliases:
+          - session-service.svc
 
-#  nginx:
-#    image: nginx:1.27-alpine
-#    container_name: p4-nginx
-#    ports:
-#      - "80:80"
-#    volumes:
-#      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-#    depends_on:
-#      backend:
-#        condition: service_healthy
-#    healthcheck:
-#      test: ["CMD", "curl", "-f", "http://localhost/nginx-health"]
-#      interval: 30s
-#      timeout: 5s
-#      retries: 3
-#    restart: unless-stopped
+  analysis-service:
+    build:
+      context: ./services/analysis
+    environment:
+      - DATA_DIR=/app/data
+    volumes:
+      - app-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      app-network:
+        aliases:
+          - analysis-service.svc
+
+  llm-service:
+    build:
+      context: ./services/llm
+    environment:
+      - DATA_DIR=/app/data
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+    volumes:
+      - app-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      app-network:
+        aliases:
+          - llm-service.svc
+
+networks:
+  app-network:
+    driver: bridge
 
 volumes:
   app-data:
-
-networks:
-  llmnet:
-    external: true
