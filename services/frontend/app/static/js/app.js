@@ -339,7 +339,32 @@ async function runVerification() {
     }
 }
 
+function animateCount(el, target, suffix, duration) {
+    const start = performance.now();
+    function step(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(eased * target) + suffix;
+        if (progress < 1) requestAnimationFrame(step);
+        else el.textContent = target + suffix;
+    }
+    requestAnimationFrame(step);
+}
+
 function renderVerificationResults(data) {
+    // Visual 1: Headline % improvement
+    const pct = data.before.total > 0
+        ? Math.round((data.resolved / data.before.total) * 100)
+        : 0;
+    const pctEl = document.getElementById('verifyPct');
+    pctEl.classList.remove('is-regressed', 'is-neutral');
+    if (data.new > data.resolved)      pctEl.classList.add('is-regressed');
+    else if (pct === 0)                pctEl.classList.add('is-neutral');
+    animateCount(pctEl, pct, '%', 700);
+    document.getElementById('verifyPctSub').textContent =
+        `${data.resolved} fixed · ${data.remaining} remaining` +
+        (data.new > 0 ? ` · ${data.new} new regressions` : '');
+
     // Score cards
     document.getElementById('verifyResolved').textContent = data.resolved;
     document.getElementById('verifyRemaining').textContent = data.remaining;

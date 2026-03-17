@@ -254,3 +254,39 @@ details summary { cursor: pointer; font-size: .85rem; color: var(--primary); mar
   word-break: break-all;
   color: var(--muted);
 }
+
+/* ── Visual 1: Headline % improvement ────────────────────────── */
+.verify-headline {
+  text-align: center;
+  padding: 1.5rem 1rem 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.verify-pct {
+  display: block;
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--success);
+  transition: color .3s;
+}
+
+.verify-pct.is-regressed { color: var(--danger); }
+.verify-pct.is-neutral   { color: var(--muted); }
+
+.verify-pct-label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.verify-pct-sub {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
