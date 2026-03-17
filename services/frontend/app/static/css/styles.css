@@ -255,6 +255,19 @@ details summary { cursor: pointer; font-size: .85rem; color: var(--primary); mar
   color: var(--muted);
 }
 
+/* ── Shared chart wrapper ─────────────────────────────────────── */
+.chart-wrap { position: relative; margin: 1.25rem 0; }
+
+.charts-row { display: flex; gap: 1.5rem; align-items: flex-start; margin: 1.25rem 0; }
+.charts-row .chart-wrap { margin: 0; }
+.chart-wrap--bar  { flex: 2; min-width: 0; }
+.chart-wrap--donut { flex: 1; min-width: 200px; max-width: 260px; }
+
+@media (max-width: 640px) {
+    .charts-row { flex-direction: column; }
+    .chart-wrap--donut { max-width: 100%; }
+}
+
 /* ── Visual 1: Headline % improvement ────────────────────────── */
 .verify-headline {
   text-align: center;

@@ -196,6 +196,16 @@
           </div>
         </div>
 
+        <!-- Visuals 2 + 3: side by side row -->
+        <div class="charts-row">
+          <div class="chart-wrap chart-wrap--bar">
+            <canvas id="chartSeverity"></canvas>
+          </div>
+          <div class="chart-wrap chart-wrap--donut hidden" id="chartOutcomeWrap">
+            <canvas id="chartOutcome"></canvas>
+          </div>
+        </div>
+
         <!-- Regression warning (only shown when new > 0) -->
         <div class="hidden verify-regressions" id="regressionWarning">
           <strong>⚠️ Regressions detected</strong> — the LLM introduced new issues while patching.
@@ -206,6 +216,7 @@
     </div>
 
 </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
 <script src="static/js/app.js"></script>
 </body>
 </html>

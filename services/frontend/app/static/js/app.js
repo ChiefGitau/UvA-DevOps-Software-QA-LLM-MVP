@@ -339,6 +339,138 @@ async function runVerification() {
     }
 }
 
+// ── Chart helpers ────────────────────────────────────────────────
+const _charts = {};
+function destroyChart(id) {
+    if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+}
+
+function renderSeverityChart(before, after) {
+    destroyChart('chartSeverity');
+    const SEV_LABELS = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+    const SEV_COLORS = ['#ef4444', '#fd7e14', '#f59e0b', '#38bdf8'];
+    const ctx = document.getElementById('chartSeverity').getContext('2d');
+    _charts['chartSeverity'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: SEV_LABELS,
+            datasets: [
+                {
+                    label: 'Before',
+                    data: SEV_LABELS.map(s => before.by_severity[s] || 0),
+                    backgroundColor: '#94a3b8',
+                    borderRadius: 4,
+                    barPercentage: 0.7,
+                },
+                {
+                    label: 'After',
+                    data: SEV_LABELS.map(s => after.by_severity[s] || 0),
+                    backgroundColor: SEV_COLORS,
+                    borderRadius: 4,
+                    barPercentage: 0.7,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top', align: 'end' },
+                tooltip: {
+                    callbacks: {
+                        footer(items) {
+                            const sev = items[0].label;
+                            const b = before.by_severity[sev] || 0;
+                            const a = after.by_severity[sev] || 0;
+                            const fixed = b - a;
+                            return fixed > 0 ? `▼ ${fixed} fixed` : fixed < 0 ? `▲ ${Math.abs(fixed)} new` : 'No change';
+                        },
+                    },
+                },
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, precision: 0 },
+                    grid: { color: '#f1f5f9' },
+                },
+                x: { grid: { display: false } },
+            },
+        },
+    });
+}
+
+function renderOutcomeChart(resolved, remaining, newCount) {
+    destroyChart('chartOutcome');
+    const wrap = document.getElementById('chartOutcomeWrap');
+
+    // Hide when everything is resolved — a 100% green donut adds no info
+    if (remaining === 0 && newCount === 0) {
+        wrap.classList.add('hidden');
+        return;
+    }
+    wrap.classList.remove('hidden');
+
+    const labels = ['Resolved', 'Remaining', 'New'];
+    const values = [resolved, remaining, newCount];
+    const colors = ['#10b981', '#f59e0b', '#ef4444'];
+
+    // Drop zero-value segments
+    const filtered = labels.reduce((acc, l, i) => {
+        if (values[i] > 0) acc.push({ label: l, value: values[i], color: colors[i] });
+        return acc;
+    }, []);
+
+    const ctx = document.getElementById('chartOutcome').getContext('2d');
+    _charts['chartOutcome'] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: filtered.map(d => d.label),
+            datasets: [{
+                data: filtered.map(d => d.value),
+                backgroundColor: filtered.map(d => d.color),
+                borderWidth: 2,
+                borderColor: '#fff',
+                hoverOffset: 6,
+            }],
+        },
+        options: {
+            cutout: '70%',
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 12, boxWidth: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label(item) {
+                            const total = resolved + remaining + newCount;
+                            const pct = Math.round((item.raw / total) * 100);
+                            return ` ${item.raw} (${pct}%)`;
+                        },
+                    },
+                },
+            },
+        },
+        plugins: [{
+            id: 'centreLabel',
+            afterDraw(chart) {
+                const { ctx: c, chartArea: { width, height, left, top } } = chart;
+                const total = resolved + remaining + newCount;
+                c.save();
+                c.textAlign = 'center';
+                c.textBaseline = 'middle';
+                const cx = left + width / 2;
+                const cy = top + height / 2;
+                c.font = 'bold 1.4rem Inter, sans-serif';
+                c.fillStyle = '#0f172a';
+                c.fillText(total, cx, cy - 8);
+                c.font = '0.7rem Inter, sans-serif';
+                c.fillStyle = '#64748b';
+                c.fillText('total', cx, cy + 12);
+                c.restore();
+            },
+        }],
+    });
+}
+
 function animateCount(el, target, suffix, duration) {
     const start = performance.now();
     function step(now) {
@@ -373,6 +505,10 @@ function renderVerificationResults(data) {
     // Colour the "new" card red if regressions exist
     const newCard = document.getElementById('verifyNew').closest('.scorecard');
     newCard.classList.toggle('scorecard-danger', data.new > 0);
+
+    // Visual 2 + 3: Grouped bar + donut
+    renderSeverityChart(data.before, data.after);
+    renderOutcomeChart(data.resolved, data.remaining, data.new);
 
     // Before / after summary badges
     renderSummary(data.before, 'verifyBefore');
