@@ -14,6 +14,37 @@ function setStatus(msg, type = 'info') {
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 function hide(id) { document.getElementById(id).classList.add('hidden'); }
 
+async function fetchJSON(url, options = {}) {
+    const res = await fetch(url, options);
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+        throw new Error(`Server error (HTTP ${res.status}) — upstream service may be unavailable`);
+    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    return data;
+}
+
+function showBusy(label) {
+    show('progressBar');
+    document.getElementById('overlayLabel').textContent = label;
+    show('resultsBusyOverlay');
+}
+function hideBusy() {
+    hide('progressBar');
+    hide('resultsBusyOverlay');
+}
+
+// --- Stepper ---
+function setStep(active) {
+    for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById('step-' + i);
+        el.classList.remove('active', 'completed');
+        if (i < active) el.classList.add('completed');
+        else if (i === active) el.classList.add('active');
+    }
+}
+
 // --- Upload ---
 async function uploadZip() {
     const input = document.getElementById('zipFile');
@@ -24,9 +55,7 @@ async function uploadZip() {
     form.append('archive', input.files[0]);
 
     try {
-        const res = await fetch('/api/session/upload', { method: 'POST', body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+        const data = await fetchJSON('/api/session/upload', { method: 'POST', body: form });
         sessionId = data.session_id;
         setStatus('Upload successful! Session: ' + sessionId.slice(0, 8) + '...', 'success');
         await loadFiles();
@@ -40,13 +69,11 @@ async function cloneRepo() {
 
     setStatus('Cloning repository...', 'info');
     try {
-        const res = await fetch('/api/session/clone', {
+        const data = await fetchJSON('/api/session/clone', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ git_url: url }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Clone failed');
         sessionId = data.session_id;
         setStatus('Clone successful! Session: ' + sessionId.slice(0, 8) + '...', 'success');
         await loadFiles();
@@ -55,8 +82,7 @@ async function cloneRepo() {
 
 // --- File List ---
 async function loadFiles() {
-    const res = await fetch(`/api/session/${sessionId}/files`);
-    const data = await res.json();
+    const data = await fetchJSON(`/api/session/${sessionId}/files`);
     const files = data.files || [];
 
     const container = document.getElementById('fileList');
@@ -65,6 +91,7 @@ async function loadFiles() {
     ).join('');
     document.getElementById('fileCount').textContent = `${files.length} files`;
     show('fileSection');
+    setStep(2);
 }
 
 function toggleAll(checked) {
@@ -80,23 +107,25 @@ async function runAnalysis() {
     const selected = [...document.querySelectorAll('#fileList input:checked')].map(cb => cb.value);
     if (!selected.length) { setStatus('Select at least one file', 'error'); btn.disabled = false; btn.textContent = 'Run Analysis (all 4 tools)'; return; }
 
+    show('resultsSection');
+    showBusy('Analysing…');
+
     try {
-        const res = await fetch('/api/analyse', {
+        const data = await fetchJSON('/api/analyse', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: sessionId, selected_files: selected }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Analysis failed');
 
         currentFindings = data.findings || [];
         renderSummary(data.summary);
         renderFindings(currentFindings);
-        show('resultsSection');
+        setStep(3);
         // Show repair section and load providers
         if (currentFindings.length > 0) {
             await loadProviders();
             show('repairSection');
+            setStep(4);
         }
 
         // Hide verification from a previous run when re-analysing
@@ -107,6 +136,7 @@ async function runAnalysis() {
     } catch (e) {
         setStatus('Analysis failed: ' + e.message, 'error');
     } finally {
+        hideBusy();
         btn.disabled = false;
         btn.textContent = 'Run Analysis (all 4 tools)';
     }
@@ -128,7 +158,16 @@ function renderSummary(s, targetId = 'summary') {
 // --- Findings Table ---
 function renderFindings(findings) {
     const body = document.getElementById('findingsBody');
-    if (!findings.length) { body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">No findings 🎉</td></tr>'; return; }
+    const wrap = body.closest('.findings-table-wrap');
+    const empty = document.getElementById('findingsEmpty');
+    if (!findings.length) {
+        body.innerHTML = '';
+        wrap.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+    }
+    wrap.classList.remove('hidden');
+    empty.classList.add('hidden');
 
     body.innerHTML = findings.map((f, i) => `<tr>
         <td>${i + 1}</td>
@@ -168,8 +207,7 @@ function sortTable(col) {
 // --- LLM Model Selection ---
 async function loadProviders() {
     try {
-        const res = await fetch('/api/llm/providers');
-        const data = await res.json();
+        const data = await fetchJSON('/api/llm/providers');
         const select = document.getElementById('providerSelect');
         select.innerHTML = '';
         // Auto option (routes by severity)
@@ -206,16 +244,15 @@ async function runRepair() {
     hide('verificationSection');
     hide('verificationResults');
 
+    showBusy('Repairing…');
     const provider = document.getElementById('providerSelect').value || null;
 
     try {
-        const res = await fetch(`/api/repair/${sessionId}`, {
+        const data = await fetchJSON(`/api/repair/${sessionId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ provider: provider }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Repair failed');
 
         renderRepairResults(data);
         show('repairResults');
@@ -223,10 +260,12 @@ async function runRepair() {
 
         // Reveal Step 5 automatically after a successful repair
         show('verificationSection');
+        setStep(5);
         document.getElementById('verificationSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
         setStatus('Repair failed: ' + e.message, 'error');
     } finally {
+        hideBusy();
         btn.disabled = false;
         btn.textContent = 'Repair Findings';
     }
@@ -268,19 +307,14 @@ async function runVerification() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Re-running analysis...';
     setStatus('Running post-repair analysis...', 'info');
+    showBusy('Verifying…');
 
     try {
-        const res = await fetch(`/api/verify/${sessionId}`, {
+        const data = await fetchJSON(`/api/verify/${sessionId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}),
         });
-        const data = await res.json();
-        if (!res.ok) {
-          const detail = data.detail;
-          const msg = typeof detail === 'string' ? detail : JSON.stringify(detail);
-          throw new Error(msg || 'Verification failed');
-        }
 
         renderVerificationResults(data);
         show('verificationResults');
@@ -299,6 +333,7 @@ async function runVerification() {
     } catch (e) {
         setStatus('Verification failed: ' + e.message, 'error');
     } finally {
+        hideBusy();
         btn.disabled = false;
         btn.textContent = 'Run Verification';
     }
