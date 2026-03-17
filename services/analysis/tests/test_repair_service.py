@@ -3,10 +3,6 @@
 import json
 
 import pytest
-from fastapi.testclient import TestClient
-
-from app.llm.base import LLMModel, LLMResponse
-from app.main import app
 from app.services.repair_service import (
     _group_by_file,
     _highest_severity,
@@ -16,6 +12,10 @@ from app.services.repair_service import (
     _strip_fences,
     run_repair,
 )
+from fastapi.testclient import TestClient
+
+from app.llm.base import LLMModel, LLMResponse
+from app.main import app
 
 client = TestClient(app)
 

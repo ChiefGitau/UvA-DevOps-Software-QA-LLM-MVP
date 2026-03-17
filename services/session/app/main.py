@@ -17,6 +17,7 @@ app = FastAPI(
     version="0.2.0",
 )
 
+
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -26,8 +27,10 @@ async def log_requests(request: Request, call_next):
     _logger.info("%s %s → %d (%.0fms)", request.method, request.url.path, response.status_code, duration_ms)
     return response
 
+
 # API routers
 app.include_router(session_router)
+
 
 @app.get("/health", tags=["health"])
 def health():

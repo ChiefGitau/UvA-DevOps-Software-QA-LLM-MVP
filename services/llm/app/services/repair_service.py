@@ -25,12 +25,13 @@ import logging
 from collections import defaultdict
 from dataclasses import asdict
 
+from app.domain.models import Finding, Patch
+from app.services.session_service import SessionService
+
 from app.core.config import settings
 from app.core.containers import build_llm_registry
-from app.domain.models import Finding, Patch
 from app.llm.base import LLMResponse, TokenTracker
 from app.repair.prompt_builder import SYSTEM_PROMPT, build_file_repair_prompt
-from app.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
 
@@ -260,8 +261,7 @@ def run_repair(
             )
             # Retry once: feed the syntax error back so the LLM can self-correct
             retry_prompt = (
-                user_prompt
-                + f"\n\n## Your previous response had a Python syntax error:\n"
+                user_prompt + f"\n\n## Your previous response had a Python syntax error:\n"
                 f"  {first_err}\n"
                 "Fix this syntax error. Ensure every 'try' block has a matching "
                 "'except' or 'finally'. Return the COMPLETE corrected file."

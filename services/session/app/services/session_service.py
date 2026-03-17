@@ -7,10 +7,10 @@ import zipfile
 from pathlib import Path
 from typing import Any
 
+from app.domain.schemas import SessionConfig
 from fastapi import UploadFile
 
 from app.core.config import settings
-from app.domain.schemas import SessionConfig
 
 
 class SessionService:
