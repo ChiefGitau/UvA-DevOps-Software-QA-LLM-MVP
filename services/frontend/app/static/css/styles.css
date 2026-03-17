@@ -1,11 +1,11 @@
 :root {
-    --bg: #f8f9fa; --surface: #fff; --border: #dee2e6;
-    --text: #212529; --muted: #6c757d;
-    --primary: #0d6efd; --danger: #dc3545; --warning: #ffc107;
-    --success: #198754; --info: #0dcaf0;
+    --bg: #f1f5f9; --surface: #fff; --border: #e2e8f0;
+    --text: #0f172a; --muted: #64748b;
+    --primary: #6366f1; --danger: #ef4444; --warning: #f59e0b;
+    --success: #10b981; --info: #38bdf8;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
 .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
 h1 { font-size: 1.4rem; margin-bottom: 1rem; }
 h2 { font-size: 1.1rem; margin-bottom: .75rem; color: var(--muted); }
@@ -18,8 +18,8 @@ h2 { font-size: 1.1rem; margin-bottom: .75rem; color: var(--muted); }
 input[type="text"], input[type="file"] { flex: 1; padding: .5rem .75rem; border: 1px solid var(--border); border-radius: 6px; font-size: .9rem; }
 button { padding: .5rem 1rem; border: none; border-radius: 6px; font-size: .9rem; cursor: pointer; font-weight: 500; }
 .btn-primary { background: var(--primary); color: #fff; }
-.btn-primary:hover { background: #0b5ed7; }
-.btn-primary:disabled { background: #6c9be6; cursor: not-allowed; }
+.btn-primary:hover { background: #4f46e5; }
+.btn-primary:disabled { background: #a5b4fc; cursor: not-allowed; }
 
 /* Status */
 .status { padding: .5rem .75rem; border-radius: 6px; margin-bottom: .75rem; font-size: .85rem; display: none; }
