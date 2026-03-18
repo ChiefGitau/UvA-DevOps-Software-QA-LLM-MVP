@@ -3,9 +3,8 @@ from __future__ import annotations
 import re
 import shutil
 
-from git import Repo
-
 from app.services.session_service import SessionService
+from git import Repo
 
 
 class RepoService:

@@ -63,10 +63,7 @@ def test_tracker_cost_accumulates_across_calls():
     tracker = TokenTracker(budget=50_000)
     tracker.record(LLMResponse(content="a", input_tokens=1_000, output_tokens=500, model="gpt-4o-mini"))
     tracker.record(LLMResponse(content="b", input_tokens=2_000, output_tokens=800, model="gpt-5-mini"))
-    expected = (
-        calculate_cost_usd("gpt-4o-mini", 1_000, 500)
-        + calculate_cost_usd("gpt-5-mini", 2_000, 800)
-    )
+    expected = calculate_cost_usd("gpt-4o-mini", 1_000, 500) + calculate_cost_usd("gpt-5-mini", 2_000, 800)
     assert tracker.total_cost_usd == pytest.approx(expected)
 
 
