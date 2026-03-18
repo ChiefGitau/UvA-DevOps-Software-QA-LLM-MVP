@@ -206,17 +206,37 @@
           </div>
         </div>
 
+        <!-- Visual 4: Horizontal stacked bar — findings by tool -->
+        <div class="chart-wrap chart-wrap--tool">
+          <canvas id="chartTool"></canvas>
+        </div>
+
+        <!-- Visual 5: File treemap (collapsible) -->
+        <details class="chart-details" id="chartFilesDetails">
+          <summary>Remaining findings by file</summary>
+          <div class="chart-wrap chart-wrap--treemap">
+            <canvas id="chartFiles"></canvas>
+          </div>
+        </details>
+
         <!-- Regression warning (only shown when new > 0) -->
         <div class="hidden verify-regressions" id="regressionWarning">
-          <strong>⚠️ Regressions detected</strong> — the LLM introduced new issues while patching.
-          Consider re-running repair on these finding IDs:
-          <pre id="regressionIds"></pre>
+          <div class="regression-header">
+            <div class="regression-text">
+              <strong id="regressionCount"></strong> new issues were introduced while patching.
+              <span class="regression-sub">The LLM modified code in a way that created regressions. Click below to re-run repair targeting only these findings.</span>
+            </div>
+            <button class="btn-primary btn-sm" id="reRepairBtn" onclick="reRunRepair()">
+              Re-repair regressions
+            </button>
+          </div>
         </div>
       </div>
     </div>
 
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2/dist/chartjs-chart-treemap.umd.min.js"></script>
 <script src="static/js/app.js"></script>
 </body>
 </html>
