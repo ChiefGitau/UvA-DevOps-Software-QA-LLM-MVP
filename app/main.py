@@ -9,6 +9,7 @@ import logging
 import time
 from pathlib import Path
 
+from app.core.logging import setup_logging
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -16,7 +17,6 @@ from fastapi.staticfiles import StaticFiles
 from app.api.analysis_routes import router as analysis_router
 from app.api.repair_routes import router as repair_router
 from app.api.session_routes import router as session_router
-from app.core.logging import setup_logging
 
 # Configure structured JSON logging before anything else
 setup_logging()
