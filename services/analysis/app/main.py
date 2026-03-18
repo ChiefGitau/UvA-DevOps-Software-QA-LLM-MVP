@@ -12,9 +12,23 @@ _logger = logging.getLogger(__name__)
 _BOOT_TIME = time.monotonic()
 
 app = FastAPI(
-    title="Analysis Service",
+    title="Quality Repair Tool — P4 Group 17",
     description="Performs static analysis using Bandit, Ruff, Radon, and TruffleHog.",
     version="0.2.0",
+    openapi_tags=[
+        {
+            "name": "health",
+            "description": "Service liveness and tool availability checks.",
+        },
+        {
+            "name": "session",
+            "description": "Session and workspace management — upload ZIP archives or clone GitHub repositories.",
+        },
+        {
+            "name": "analysis",
+            "description": "Run static analysis tools and retrieve unified findings reports.",
+        },
+    ],
 )
 
 
