@@ -21,10 +21,8 @@ class RuffAgent(BaseToolAgent):
 
 
 def ruff_node(state: AgentState) -> dict:
-    task = next(
-        (t for t in state.get("parallel_tasks", []) if t["tool"] == "ruff"), None
-    )
+    task = next((t for t in state.get("parallel_tasks", []) if t["tool"] == "ruff"), None)
     if task is None:
         return {"patches": [], "errors": []}
-    agent = RuffAgent(provider=state.get("provider"))
+    agent = RuffAgent(session_id=state["session_id"], provider=state.get("provider"))
     return agent.run(task)

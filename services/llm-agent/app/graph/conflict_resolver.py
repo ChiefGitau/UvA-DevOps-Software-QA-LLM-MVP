@@ -46,18 +46,20 @@ def conflict_resolver_node(state: AgentState) -> dict:
             task["files"],
         )
         try:
-            agent = agent_cls(provider=provider)
+            agent = agent_cls(session_id=state["session_id"], provider=provider)
             result = agent.run(task)
             all_patches.extend(result.get("patches", []))
             all_errors.extend(result.get("errors", []))
         except Exception as e:
             logger.error("conflict_resolver: %s agent failed: %s", tool, e)
             for f in task["findings"]:
-                all_errors.append({
-                    "finding_id": f.get("id", ""),
-                    "file": f.get("file", ""),
-                    "tool": tool,
-                    "error": str(e),
-                })
+                all_errors.append(
+                    {
+                        "finding_id": f.get("id", ""),
+                        "file": f.get("file", ""),
+                        "tool": tool,
+                        "error": str(e),
+                    }
+                )
 
     return {"patches": all_patches, "errors": all_errors}

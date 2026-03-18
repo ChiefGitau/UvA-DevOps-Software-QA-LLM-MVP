@@ -90,18 +90,18 @@ def reviewer_node(state: AgentState) -> dict:
         updated["reviewer_note"] = reason if not approved else None
         if not approved:
             updated["applied"] = False
-            logger.info(
-                "reviewer: REJECTED finding %s — %s", patch["finding_id"], reason
-            )
+            logger.info("reviewer: REJECTED finding %s — %s", patch["finding_id"], reason)
         else:
             logger.info("reviewer: approved finding %s", patch["finding_id"])
 
         reviewed_patches.append(updated)  # type: ignore[arg-type]
-        review_notes.append({
-            "finding_id": patch["finding_id"],
-            "approved": approved,
-            "reason": reason,
-        })
+        review_notes.append(
+            {
+                "finding_id": patch["finding_id"],
+                "approved": approved,
+                "reason": reason,
+            }
+        )
 
     # Return as delta — the reducer appends these to existing state lists
     return {"patches": reviewed_patches, "review_notes": review_notes}

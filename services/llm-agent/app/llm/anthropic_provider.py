@@ -21,11 +21,14 @@ class AnthropicModel(LLMModel):
 
     def chat(self, system: str, user: str, tracker: TokenTracker | None = None) -> LLMResponse:
         if not self.is_configured():
-            return LLMResponse(content="", provider="anthropic", model=self._model_id, error="ANTHROPIC_API_KEY not configured")
+            return LLMResponse(
+                content="", provider="anthropic", model=self._model_id, error="ANTHROPIC_API_KEY not configured"
+            )
         if tracker and tracker.remaining <= 0:
             return LLMResponse(content="", provider="anthropic", model=self._model_id, error="Token budget exhausted")
         try:
             import anthropic
+
             client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
             response = client.messages.create(
                 model=self._model_id,

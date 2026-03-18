@@ -55,15 +55,17 @@ class TokenTracker:
         self.total_cost_usd += call_cost
         if resp.error:
             self.errors += 1
-        self.history.append({
-            "call": self.calls,
-            "input_tokens": resp.input_tokens,
-            "output_tokens": resp.output_tokens,
-            "cost_usd": round(call_cost, 8),
-            "model": resp.model,
-            "provider": resp.provider,
-            "error": resp.error,
-        })
+        self.history.append(
+            {
+                "call": self.calls,
+                "input_tokens": resp.input_tokens,
+                "output_tokens": resp.output_tokens,
+                "cost_usd": round(call_cost, 8),
+                "model": resp.model,
+                "provider": resp.provider,
+                "error": resp.error,
+            }
+        )
 
     def to_dict(self) -> dict[str, Any]:
         return {

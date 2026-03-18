@@ -21,6 +21,7 @@ class OllamaModel(LLMModel):
             return False
         try:
             import httpx
+
             with httpx.Client(timeout=2.0) as client:
                 return client.get(f"{settings.OLLAMA_BASE_URL.rstrip('/')}/api/tags").status_code == 200
         except Exception:
@@ -33,6 +34,7 @@ class OllamaModel(LLMModel):
             return LLMResponse(content="", provider="ollama", model=self._model_id, error="Token budget exhausted")
         try:
             import ollama
+
             client = ollama.Client(host=settings.OLLAMA_BASE_URL)
             response = client.chat(
                 model=self._model_id,

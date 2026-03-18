@@ -26,7 +26,9 @@ REPAIR_SCHEMA = {
 
 
 class OpenAIModel(LLMModel):
-    def __init__(self, model_id: str = "gpt-4o-mini", display_name: str | None = None, use_structured: bool = False) -> None:
+    def __init__(
+        self, model_id: str = "gpt-4o-mini", display_name: str | None = None, use_structured: bool = False
+    ) -> None:
         self._model_id = model_id
         self._display_name = display_name or model_id
         self._use_structured = use_structured
@@ -40,11 +42,14 @@ class OpenAIModel(LLMModel):
 
     def chat(self, system: str, user: str, tracker: TokenTracker | None = None) -> LLMResponse:
         if not self.is_configured():
-            return LLMResponse(content="", provider="openai", model=self._model_id, error="OPENAI_API_KEY not configured")
+            return LLMResponse(
+                content="", provider="openai", model=self._model_id, error="OPENAI_API_KEY not configured"
+            )
         if tracker and tracker.remaining <= 0:
             return LLMResponse(content="", provider="openai", model=self._model_id, error="Token budget exhausted")
         try:
             import openai
+
             client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
             kwargs: dict = {
                 "model": self._model_id,

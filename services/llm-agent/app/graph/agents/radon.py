@@ -21,10 +21,8 @@ class RadonAgent(BaseToolAgent):
 
 
 def radon_node(state: AgentState) -> dict:
-    task = next(
-        (t for t in state.get("parallel_tasks", []) if t["tool"] == "radon_cc"), None
-    )
+    task = next((t for t in state.get("parallel_tasks", []) if t["tool"] == "radon_cc"), None)
     if task is None:
         return {"patches": [], "errors": []}
-    agent = RadonAgent(provider=state.get("provider"))
+    agent = RadonAgent(session_id=state["session_id"], provider=state.get("provider"))
     return agent.run(task)

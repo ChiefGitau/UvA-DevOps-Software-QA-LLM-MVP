@@ -53,9 +53,7 @@ def orchestrator_node(state: AgentState) -> dict:
     # Persist
     reports_dir = Path(settings.DATA_DIR) / session_id / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
-    (reports_dir / "repair_report.json").write_text(
-        json.dumps(report, indent=2), encoding="utf-8"
-    )
+    (reports_dir / "repair_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
 
     logger.info(
         "orchestrator: session=%s repaired=%d rejected=%d errors=%d",

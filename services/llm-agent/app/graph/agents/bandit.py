@@ -23,10 +23,8 @@ class BanditAgent(BaseToolAgent):
 
 
 def bandit_node(state: AgentState) -> dict:
-    task = next(
-        (t for t in state.get("parallel_tasks", []) if t["tool"] == "bandit"), None
-    )
+    task = next((t for t in state.get("parallel_tasks", []) if t["tool"] == "bandit"), None)
     if task is None:
         return {"patches": [], "errors": []}
-    agent = BanditAgent(provider=state.get("provider"))
+    agent = BanditAgent(session_id=state["session_id"], provider=state.get("provider"))
     return agent.run(task)

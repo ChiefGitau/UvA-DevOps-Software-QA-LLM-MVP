@@ -22,10 +22,8 @@ class TruffleHogAgent(BaseToolAgent):
 
 
 def trufflehog_node(state: AgentState) -> dict:
-    task = next(
-        (t for t in state.get("parallel_tasks", []) if t["tool"] == "trufflehog"), None
-    )
+    task = next((t for t in state.get("parallel_tasks", []) if t["tool"] == "trufflehog"), None)
     if task is None:
         return {"patches": [], "errors": []}
-    agent = TruffleHogAgent(provider=state.get("provider"))
+    agent = TruffleHogAgent(session_id=state["session_id"], provider=state.get("provider"))
     return agent.run(task)

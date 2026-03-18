@@ -21,8 +21,7 @@ router = APIRouter(prefix="/api", tags=["repair-agent"])
 class AgentRepairRequest(BaseModel):
     finding_ids: list[str] | None = Field(
         None,
-        description="Specific finding IDs to repair. If omitted, uses all findings "
-        "up to MAX_REPAIR_ISSUES.",
+        description="Specific finding IDs to repair. If omitted, uses all findings up to MAX_REPAIR_ISSUES.",
     )
     provider: str | None = Field(
         None,
@@ -36,9 +35,7 @@ class AgentRepairRequest(BaseModel):
     summary="Repair findings via agent pipeline",
     response_description="Patches and report from the multi-agent LangGraph pipeline",
 )
-async def repair_agent(
-    session_id: str, req: AgentRepairRequest | None = None
-) -> dict[str, Any]:
+async def repair_agent(session_id: str, req: AgentRepairRequest | None = None) -> dict[str, Any]:
     """Invoke the LangGraph multi-agent repair pipeline for a session.
 
     Runs a Dispatcher → parallel tool agents → ConflictResolver →

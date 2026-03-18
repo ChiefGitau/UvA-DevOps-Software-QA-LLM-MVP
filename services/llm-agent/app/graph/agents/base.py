@@ -21,7 +21,9 @@ class BaseToolAgent:
     TOOL_NAME: str = "unknown"
     SYSTEM_PROMPT: str = ""
 
-    def __init__(self, provider: str | None = None) -> None:
+    def __init__(self, session_id: str, provider: str | None = None) -> None:
+        self._session_id = session_id
+        self._workspace = Path(settings.DATA_DIR) / session_id / "workspace"
         self._registry = build_llm_registry()
         if provider:
             self._model = self._registry.pick(provider)
@@ -49,31 +51,33 @@ class BaseToolAgent:
             source = self._read_source(file_path)
             if source is None:
                 for f in findings:
-                    errors.append({
-                        "finding_id": f.get("id", ""),
-                        "file": file_path,
-                        "tool": self.TOOL_NAME,
-                        "error": f"File not found: {file_path}",
-                    })
+                    errors.append(
+                        {
+                            "finding_id": f.get("id", ""),
+                            "file": file_path,
+                            "tool": self.TOOL_NAME,
+                            "error": f"File not found: {file_path}",
+                        }
+                    )
                 continue
 
             # Apply findings one at a time, feeding patched output forward
             current_source = source
             for finding in findings:
-                result, current_source = self._repair_one(
-                    finding, file_path, current_source
-                )
+                result, current_source = self._repair_one(finding, file_path, current_source)
                 if result["applied"]:
                     patches.append(result)
                     # Write the patched file back so later agents see it
                     self._write_source(file_path, current_source)
                 else:
-                    errors.append({
-                        "finding_id": finding.get("id", ""),
-                        "file": file_path,
-                        "tool": self.TOOL_NAME,
-                        "error": result.get("error") or "Unknown error",
-                    })
+                    errors.append(
+                        {
+                            "finding_id": finding.get("id", ""),
+                            "file": file_path,
+                            "tool": self.TOOL_NAME,
+                            "error": result.get("error") or "Unknown error",
+                        }
+                    )
 
         return {"patches": patches, "errors": errors}
 
@@ -81,9 +85,7 @@ class BaseToolAgent:
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _repair_one(
-        self, finding: dict, file_path: str, source: str
-    ) -> tuple[PatchResult, str]:
+    def _repair_one(self, finding: dict, file_path: str, source: str) -> tuple[PatchResult, str]:
         user_prompt = self._build_user_prompt(finding, source)
         resp = self._model.chat(system=self.SYSTEM_PROMPT, user=user_prompt)
 
@@ -141,21 +143,23 @@ class BaseToolAgent:
         )
         return "".join(diff)
 
+    def _resolve(self, file_path: str) -> Path:
+        p = Path(file_path)
+        if p.is_absolute():
+            return p
+        return self._workspace / file_path
+
     def _read_source(self, file_path: str) -> str | None:
-        path = Path(file_path)
-        if not path.is_absolute():
-            path = Path(settings.DATA_DIR) / file_path
+        path = self._resolve(file_path)
         try:
             return path.read_text(encoding="utf-8")
         except FileNotFoundError:
-            logger.warning("%s: file not found: %s", self.TOOL_NAME, file_path)
+            logger.warning("%s: file not found: %s", self.TOOL_NAME, path)
             return None
 
     def _write_source(self, file_path: str, content: str) -> None:
-        path = Path(file_path)
-        if not path.is_absolute():
-            path = Path(settings.DATA_DIR) / file_path
+        path = self._resolve(file_path)
         try:
             path.write_text(content, encoding="utf-8")
         except OSError as e:
-            logger.error("%s: failed to write %s: %s", self.TOOL_NAME, file_path, e)
+            logger.error("%s: failed to write %s: %s", self.TOOL_NAME, path, e)

@@ -35,9 +35,7 @@ def dispatcher_node(state: AgentState) -> dict:
     parallel_tasks + queued_tasks for the rest of the graph.
     """
     session_id = state["session_id"]
-    findings_path = (
-        Path(settings.DATA_DIR) / session_id / "reports" / "findings_unified.json"
-    )
+    findings_path = Path(settings.DATA_DIR) / session_id / "reports" / "findings_unified.json"
 
     # Load findings
     raw: list[dict] = []
@@ -73,9 +71,7 @@ def dispatcher_node(state: AgentState) -> dict:
             if fp:
                 file_to_tools.setdefault(fp, []).append(tool)
 
-    contested_files: set[str] = {
-        fp for fp, tools in file_to_tools.items() if len(tools) > 1
-    }
+    contested_files: set[str] = {fp for fp, tools in file_to_tools.items() if len(tools) > 1}
 
     # For each contested file, find the winning tool (lowest priority score)
     file_winner: dict[str, str] = {}
@@ -91,31 +87,33 @@ def dispatcher_node(state: AgentState) -> dict:
 
     for tool, findings in by_tool.items():
         parallel_findings = [
-            f for f in findings
-            if f.get("file", "") not in contested_files
-            or file_winner.get(f.get("file", "")) == tool
+            f
+            for f in findings
+            if f.get("file", "") not in contested_files or file_winner.get(f.get("file", "")) == tool
         ]
         deferred_findings = [
-            f for f in findings
-            if f.get("file", "") in contested_files
-            and file_winner.get(f.get("file", "")) != tool
+            f for f in findings if f.get("file", "") in contested_files and file_winner.get(f.get("file", "")) != tool
         ]
 
         if parallel_findings:
-            parallel_tasks.append(AgentTask(
-                tool=tool,
-                findings=parallel_findings,
-                files=list({f.get("file", "") for f in parallel_findings}),
-            ))
+            parallel_tasks.append(
+                AgentTask(
+                    tool=tool,
+                    findings=parallel_findings,
+                    files=list({f.get("file", "") for f in parallel_findings}),
+                )
+            )
 
         if deferred_findings:
             # Sort deferred by priority so ConflictResolver processes them in order
             deferred_findings.sort(key=_file_priority)
-            queued_tasks.append(AgentTask(
-                tool=tool,
-                findings=deferred_findings,
-                files=list({f.get("file", "") for f in deferred_findings}),
-            ))
+            queued_tasks.append(
+                AgentTask(
+                    tool=tool,
+                    findings=deferred_findings,
+                    files=list({f.get("file", "") for f in deferred_findings}),
+                )
+            )
 
     # Sort queued tasks by best priority in the group
     queued_tasks.sort(key=lambda t: min(_file_priority(f) for f in t["findings"]))
