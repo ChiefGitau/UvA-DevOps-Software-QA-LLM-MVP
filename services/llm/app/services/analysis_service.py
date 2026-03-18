@@ -116,6 +116,8 @@ class AnalysisService:
         after_ids: set[str] = {f.id for f in post_findings}
         resolved_ids = sorted(before_ids - after_ids)
         new_ids = sorted(after_ids - before_ids)
+        new_id_set = set(new_ids)
+        new_findings = [f.to_dict() for f in post_findings if f.id in new_id_set]
 
         report = VerificationReport(
             session_id=session_id,
@@ -126,6 +128,7 @@ class AnalysisService:
             new=len(new_ids),
             resolved_ids=resolved_ids,
             new_ids=new_ids,
+            new_findings=new_findings,
         )
 
         (reports / "verification_report.json").write_text(

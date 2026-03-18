@@ -599,7 +599,7 @@ function renderFileTreemap(resolvedIds) {
         data: {
             datasets: [{
                 label: 'Remaining findings',
-                tree,
+                data: tree,
                 key: 'count',
                 backgroundColor(ctx) {
                     const raw = ctx.raw?._data;
@@ -781,6 +781,34 @@ function renderVerificationResults(data) {
         pendingRegressionIds = data.new_ids;
         document.getElementById('regressionCount').textContent =
             `${data.new} regression${data.new !== 1 ? 's' : ''} detected —`;
+
+        // Show per-file regression breakdown
+        const listEl = document.getElementById('regressionFileList');
+        const findings = data.new_findings || [];
+        if (findings.length && listEl) {
+            // Group by file
+            const byFile = {};
+            findings.forEach(f => {
+                const file = f.file || '(unknown)';
+                if (!byFile[file]) byFile[file] = [];
+                byFile[file].push(f);
+            });
+            listEl.innerHTML = Object.entries(byFile).map(([file, fList]) => `
+                <div class="regression-file">
+                    <span class="regression-filename">${escHtml(file)}</span>
+                    <span class="regression-file-count">${fList.length} new issue${fList.length !== 1 ? 's' : ''}</span>
+                    <ul class="regression-finding-list">
+                        ${fList.map(f => `<li>
+                            <span class="sev-badge sev-${f.severity||'LOW'}">${f.severity||'?'}</span>
+                            ${f.line ? `<span class="regression-line">L${f.line}</span>` : ''}
+                            <span class="regression-msg">${escHtml(f.message||'')}</span>
+                        </li>`).join('')}
+                    </ul>
+                </div>`).join('');
+        } else if (listEl) {
+            listEl.innerHTML = '';
+        }
+
         show('regressionWarning');
     } else {
         pendingRegressionIds = [];

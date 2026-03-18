@@ -129,7 +129,7 @@ tr:has(.sev-MEDIUM)   td:first-child { box-shadow: inset 3px 0 0 var(--warning);
 tr:has(.sev-LOW)      td:first-child { box-shadow: inset 3px 0 0 var(--info); }
 
 /* Severity pills */
-.sev { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: .8rem; font-weight: 700; color: #fff; }
+.sev, .sev-badge { display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: .8rem; font-weight: 700; color: #fff; flex-shrink: 0; }
 .sev-CRITICAL { background: var(--danger); }
 .sev-HIGH { background: #fd7e14; }
 .sev-MEDIUM { background: var(--warning); color: #000; }
@@ -266,6 +266,15 @@ details summary { cursor: pointer; font-size: .85rem; color: var(--primary); mar
 
 .regression-text { flex: 1; line-height: 1.5; }
 .regression-sub  { display: block; margin-top: .25rem; color: #b91c1c; font-size: .82rem; }
+
+.regression-file-list { margin-top: .85rem; display: flex; flex-direction: column; gap: .5rem; }
+.regression-file { background: #fff; border: 1px solid #fecaca; border-radius: 6px; padding: .6rem .85rem; }
+.regression-filename { font-family: monospace; font-size: .82rem; font-weight: 600; color: #7f1d1d; word-break: break-all; }
+.regression-file-count { float: right; font-size: .78rem; color: #b91c1c; }
+.regression-finding-list { margin: .4rem 0 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .25rem; }
+.regression-finding-list li { display: flex; align-items: baseline; gap: .4rem; font-size: .82rem; color: #991b1b; }
+.regression-line { font-family: monospace; font-size: .78rem; color: #b91c1c; flex-shrink: 0; }
+.regression-msg { flex: 1; }
 
 .btn-sm { padding: .35rem .85rem; font-size: .82rem; white-space: nowrap; }
 

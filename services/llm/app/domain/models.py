@@ -72,3 +72,4 @@ class VerificationReport:
     new: int
     resolved_ids: list[str]
     new_ids: list[str]
+    new_findings: list[dict[str, Any]] = field(default_factory=list)
