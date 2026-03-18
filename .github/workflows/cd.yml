@@ -67,6 +67,13 @@ jobs:
           push: true
           tags: ghcr.io/chiefgitau/uva-devops-software-qa-llm-mvp-llm:latest
 
+      - name: Build and push LLM Agent Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/llm-agent
+          push: true
+          tags: ghcr.io/chiefgitau/uva-devops-software-qa-llm-mvp-llm-agent:latest
+
       # Authenticate with AWS
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -97,3 +104,4 @@ jobs:
           aws ecs update-service --cluster qallm-mvp-cluster --service session-service --force-new-deployment
           aws ecs update-service --cluster qallm-mvp-cluster --service analysis-service --force-new-deployment
           aws ecs update-service --cluster qallm-mvp-cluster --service llm-service --force-new-deployment
+          aws ecs update-service --cluster qallm-mvp-cluster --service llm-agent-service --force-new-deployment

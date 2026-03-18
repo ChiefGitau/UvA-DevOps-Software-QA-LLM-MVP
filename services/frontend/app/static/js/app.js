@@ -245,11 +245,15 @@ async function runRepair() {
     hide('verificationSection');
     hide('verificationResults');
 
-    showBusy('Repairing…');
+    const mode = document.getElementById('repairMode').value;
+    const endpoint = mode === 'agent'
+        ? `/api/repair-agent/${sessionId}`
+        : `/api/repair/${sessionId}`;
+    showBusy(mode === 'agent' ? 'Running agent pipeline…' : 'Repairing…');
     const provider = document.getElementById('providerSelect').value || null;
 
     try {
-        const data = await fetchJSON(`/api/repair/${sessionId}`, {
+        const data = await fetchJSON(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ provider: provider }),
@@ -281,8 +285,12 @@ async function reRunRepair() {
     showBusy('Re-repairing regressions…');
 
     const provider = document.getElementById('providerSelect').value || null;
+    const mode = document.getElementById('repairMode').value;
+    const endpoint = mode === 'agent'
+        ? `/api/repair-agent/${sessionId}`
+        : `/api/repair/${sessionId}`;
     try {
-        const data = await fetchJSON(`/api/repair/${sessionId}`, {
+        const data = await fetchJSON(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ provider, finding_ids: pendingRegressionIds }),
