@@ -10,22 +10,34 @@ from app.graph.state import AgentState, PatchResult
 logger = logging.getLogger(__name__)
 
 REVIEWER_SYSTEM_PROMPT = """\
-You are a senior Python code reviewer. You will receive a unified diff produced
-by another agent. Verify:
-1. The diff compiles (no syntax errors).
-2. The diff addresses ONLY the reported finding — no unrelated changes.
-3. The fix is correct and does not introduce new issues.
+You are a senior Python code reviewer. You will receive a unified diff produced by an automated
+repair agent. Your job is to approve or reject the patch based on three criteria:
 
-Respond with JSON only:
+1. Syntactic validity — the changed lines appear syntactically valid Python (correct indentation,
+   balanced parentheses/brackets/quotes, no obvious truncation). You cannot run the code, so
+   judge by inspection.
+2. Scope — the diff addresses ONLY the reported finding. Reject patches that also rename
+   unrelated variables, reformat unrelated lines, add unrelated imports, or make any other
+   collateral changes.
+3. Correctness — the fix actually resolves the finding without introducing a new security flaw,
+   logic error, or breaking API change. For example:
+   - A bandit fix that replaces shell=True with a list arg is correct.
+   - A ruff fix that removes an import still used elsewhere is NOT correct.
+   - A radon fix that changes a public function's signature is NOT correct.
+   - A trufflehog fix that logs the secret value before removing it is NOT correct.
+
+Respond with JSON only — no prose, no markdown:
 {"approved": true}
 or
-{"approved": false, "reason": "<short explanation>"}\
+{"approved": false, "reason": "<one concise sentence explaining the rejection>"}\
 """
 
 
 def _build_review_prompt(patch: PatchResult) -> str:
+    rule_id = patch.get("finding_id", "")
     return (
         f"Tool: {patch['tool']}\n"
+        f"Rule: {rule_id}\n"
         f"Finding: {patch['description']}\n"
         f"File: {patch['file']}\n\n"
         f"Diff:\n{patch['unified_diff']}"

@@ -103,7 +103,7 @@ class BaseToolAgent:
             }
             return result, source
 
-        patched = resp.content.strip()
+        patched = self._strip_fences(resp.content.strip())
         diff = self._make_diff(source, patched, file_path)
 
         result = {
@@ -120,16 +120,34 @@ class BaseToolAgent:
         return result, patched
 
     def _build_user_prompt(self, finding: dict, source: str) -> str:
+        snippet_block = ""
+        if finding.get("code_snippet"):
+            snippet_block = f"\nOffending code at line {finding.get('line', '?')}:\n{finding['code_snippet']}\n"
         return (
             f"Finding:\n"
-            f"  tool: {finding.get('tool')}\n"
-            f"  rule: {finding.get('rule_id', 'N/A')}\n"
+            f"  tool:     {finding.get('tool')}\n"
+            f"  rule:     {finding.get('rule_id', 'N/A')}\n"
             f"  severity: {finding.get('severity', 'N/A')}\n"
-            f"  line: {finding.get('line', 'N/A')}\n"
-            f"  message: {finding.get('message', '')}\n"
-            f"\nSource file ({finding.get('file', '')}):\n"
-            f"```python\n{source}\n```"
+            f"  file:     {finding.get('file', '')}\n"
+            f"  line:     {finding.get('line', 'N/A')}\n"
+            f"  message:  {finding.get('message', '')}\n"
+            f"{snippet_block}"
+            f"\nFull source file:\n"
+            f"{source}"
         )
+
+    @staticmethod
+    def _strip_fences(text: str) -> str:
+        """Strip markdown code fences that LLMs sometimes add despite instructions."""
+        text = text.strip()
+        if text.startswith("```"):
+            lines = text.splitlines()
+            if lines and lines[0].startswith("```"):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines)
+        return text
 
     @staticmethod
     def _make_diff(original: str, patched: str, file_path: str) -> str:

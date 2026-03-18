@@ -9,6 +9,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.core.config import settings
 from app.graph.graph import graph
 from app.graph.state import AgentState
 from app.services.session_service import SessionService
@@ -21,12 +22,18 @@ router = APIRouter(prefix="/api", tags=["repair-agent"])
 class AgentRepairRequest(BaseModel):
     finding_ids: list[str] | None = Field(
         None,
-        description="Specific finding IDs to repair. If omitted, uses all findings up to MAX_REPAIR_ISSUES.",
+        description="Specific finding IDs to repair. If omitted, uses all findings up to max_issues.",
     )
     provider: str | None = Field(
         None,
         description="LLM model name (e.g. 'gpt-4o-mini', 'claude-haiku-4-5-20251001'). "
         "Defaults to the first configured provider.",
+    )
+    max_issues: int | None = Field(
+        None,
+        description="Override the maximum number of findings to repair (1–100).",
+        ge=1,
+        le=100,
     )
 
 
@@ -64,6 +71,10 @@ async def repair_agent(session_id: str, req: AgentRepairRequest | None = None) -
     if body.finding_ids:
         id_set = set(body.finding_ids)
         raw = [f for f in raw if f.get("id") in id_set]
+
+    # Apply max_issues cap (request override takes precedence over env default)
+    cap = body.max_issues or settings.MAX_REPAIR_ISSUES
+    raw = raw[:cap]
 
     initial_state: AgentState = {
         "session_id": session_id,
