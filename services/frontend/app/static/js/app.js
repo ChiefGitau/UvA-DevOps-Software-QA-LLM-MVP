@@ -316,8 +316,8 @@ async function runVerification() {
             body: JSON.stringify({}),
         });
 
-        renderVerificationResults(data);
         show('verificationResults');
+        requestAnimationFrame(() => renderVerificationResults(data));
 
         const improved = (data.before.total - data.after.total);
         const pct = data.before.total > 0
@@ -349,7 +349,9 @@ function renderSeverityChart(before, after) {
     destroyChart('chartSeverity');
     const SEV_LABELS = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
     const SEV_COLORS = ['#ef4444', '#fd7e14', '#f59e0b', '#38bdf8'];
-    const ctx = document.getElementById('chartSeverity').getContext('2d');
+    const canvas = document.getElementById('chartSeverity');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     _charts['chartSeverity'] = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -420,7 +422,9 @@ function renderOutcomeChart(resolved, remaining, newCount) {
         return acc;
     }, []);
 
-    const ctx = document.getElementById('chartOutcome').getContext('2d');
+    const canvas = document.getElementById('chartOutcome');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
     _charts['chartOutcome'] = new Chart(ctx, {
         type: 'doughnut',
         data: {
