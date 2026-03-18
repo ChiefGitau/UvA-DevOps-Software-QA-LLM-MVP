@@ -3,8 +3,52 @@ let currentFindings = [];
 let pendingRegressionIds = [];
 let sortCol = -1;
 let sortAsc = true;
+let _healthPollTimer = null;
 
 const SEV_ORDER = {CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3};
+
+// --- Service health indicator ---
+const HEALTH_ENDPOINTS = {
+    simple: '/api/health/llm',
+    agent:  '/api/health/agent',
+};
+
+async function checkServiceHealth() {
+    const mode = document.getElementById('repairMode')?.value || 'simple';
+    const dot  = document.getElementById('modeStatusDot');
+    if (!dot) return;
+
+    dot.className = 'status-dot dot-unknown';
+    dot.title = 'Checking service…';
+
+    try {
+        const res = await fetch(HEALTH_ENDPOINTS[mode], { method: 'GET', cache: 'no-store' });
+        if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            const svc  = data.service || (mode === 'agent' ? 'agent pipeline' : 'LLM service');
+            dot.className = 'status-dot dot-online';
+            dot.title = `${svc} is online`;
+        } else {
+            dot.className = 'status-dot dot-offline';
+            dot.title = `Service unavailable (HTTP ${res.status})`;
+        }
+    } catch {
+        dot.className = 'status-dot dot-offline';
+        dot.title = 'Service unreachable';
+    }
+}
+
+function onModeChange() {
+    checkServiceHealth();
+}
+
+function startHealthPolling() {
+    checkServiceHealth();
+    clearInterval(_healthPollTimer);
+    _healthPollTimer = setInterval(checkServiceHealth, 30_000);
+}
+
+document.addEventListener('DOMContentLoaded', startHealthPolling);
 
 function setStatus(msg, type = 'info') {
     const el = document.getElementById('status');

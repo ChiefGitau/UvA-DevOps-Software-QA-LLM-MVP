@@ -57,6 +57,14 @@ jobs:
           export PYTHONPATH=$PYTHONPATH:.
           pytest tests/ --cov=app --cov-report=term-missing --tb=short
 
+      - name: Run LLM Agent Service tests
+        run: |
+          cd services/llm-agent
+          pip install -r requirements.txt
+          pip install pytest pytest-cov httpx
+          export PYTHONPATH=$PYTHONPATH:.
+          pytest tests/ --cov=app --cov-report=term-missing --tb=short
+
       - name: Run Analysis Service tests
         run: |
           cd services/analysis
