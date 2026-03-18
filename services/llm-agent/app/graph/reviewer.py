@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import logging
 
-from app.core.containers import build_llm_registry
 from app.core.config import settings
+from app.core.containers import build_llm_registry
 from app.graph.state import AgentState, PatchResult
 
 logger = logging.getLogger(__name__)

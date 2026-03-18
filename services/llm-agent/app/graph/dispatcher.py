@@ -5,7 +5,6 @@ import logging
 from pathlib import Path
 
 from app.core.config import settings
-from app.domain.models import Finding
 from app.graph.state import AgentState, AgentTask
 
 logger = logging.getLogger(__name__)

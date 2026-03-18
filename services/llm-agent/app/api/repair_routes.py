@@ -4,13 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from app.core.config import settings
 from app.graph.graph import graph
 from app.graph.state import AgentState
 from app.services.session_service import SessionService

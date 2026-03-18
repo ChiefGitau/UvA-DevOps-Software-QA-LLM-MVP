@@ -1,10 +1,10 @@
 import logging
 import time
 
-from app.core.logging import setup_logging
 from fastapi import FastAPI, Request
 
 from app.api.repair_routes import router as repair_router
+from app.core.logging import setup_logging
 
 setup_logging()
 _logger = logging.getLogger(__name__)
