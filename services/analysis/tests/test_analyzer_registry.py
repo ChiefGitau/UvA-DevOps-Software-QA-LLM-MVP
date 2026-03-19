@@ -1,11 +1,9 @@
 """Tests for AnalyzerRegistry."""
+
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
-
 from app.analyzers.bandit import BanditAnalyzer
-from app.analyzers.base import RawToolResult
 from app.analyzers.radon import RadonAnalyzer
 from app.analyzers.registry import AnalyzerRegistry
 from app.analyzers.ruff import RuffAnalyzer
@@ -13,12 +11,14 @@ from app.analyzers.trufflehog import TruffleHogAnalyzer
 
 
 def _registry() -> AnalyzerRegistry:
-    return AnalyzerRegistry([
-        BanditAnalyzer(),
-        RuffAnalyzer(),
-        RadonAnalyzer(),
-        TruffleHogAnalyzer(),
-    ])
+    return AnalyzerRegistry(
+        [
+            BanditAnalyzer(),
+            RuffAnalyzer(),
+            RadonAnalyzer(),
+            TruffleHogAnalyzer(),
+        ]
+    )
 
 
 def test_registry_list_returns_all_tool_names():

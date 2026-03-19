@@ -1,5 +1,4 @@
 from app.analyzers.bandit import BanditAnalyzer
-from app.analyzers.base import RawToolResult
 
 
 def test_bandit_analyzer_writes_artifact_when_tool_missing(tmp_path, monkeypatch):

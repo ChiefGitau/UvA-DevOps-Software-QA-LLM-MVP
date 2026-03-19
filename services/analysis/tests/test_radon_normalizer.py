@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from app.normalizers.base import NormalizationContext
 from app.normalizers.radon_normalizer import RadonNormalizer
 
@@ -51,14 +50,17 @@ def test_radon_normalizer_extracts_findings_and_snippet(tmp_path: Path):
     assert f.extra["complexity"] == 12
 
 
-@pytest.mark.parametrize("cc,expected_sev", [
-    (20, "HIGH"),
-    (25, "HIGH"),
-    (10, "MEDIUM"),
-    (15, "MEDIUM"),
-    (9, "LOW"),
-    (1, "LOW"),
-])
+@pytest.mark.parametrize(
+    "cc,expected_sev",
+    [
+        (20, "HIGH"),
+        (25, "HIGH"),
+        (10, "MEDIUM"),
+        (15, "MEDIUM"),
+        (9, "LOW"),
+        (1, "LOW"),
+    ],
+)
 def test_radon_severity_thresholds(tmp_path: Path, cc: int, expected_sev: str):
     ctx = _ctx(tmp_path)
     radon_data = {"demo.py": [{"name": "f", "lineno": 1, "complexity": cc, "rank": "A"}]}

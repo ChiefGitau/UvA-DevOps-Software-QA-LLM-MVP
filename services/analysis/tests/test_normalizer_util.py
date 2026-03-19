@@ -1,14 +1,13 @@
 """Tests for normalizer utility helpers: get_rel_path and get_snippet."""
+
 from pathlib import Path
 
-import pytest
-
 from app.normalizers.util import get_rel_path, get_snippet
-
 
 # ---------------------------------------------------------------------------
 # get_rel_path
 # ---------------------------------------------------------------------------
+
 
 def test_get_rel_path_absolute_inside_workspace(tmp_path: Path):
     ws = tmp_path / "workspace"
@@ -41,6 +40,7 @@ def test_get_rel_path_plain_relative(tmp_path: Path):
 # ---------------------------------------------------------------------------
 # get_snippet
 # ---------------------------------------------------------------------------
+
 
 def test_get_snippet_marks_target_line(tmp_path: Path):
     ws = tmp_path / "ws"

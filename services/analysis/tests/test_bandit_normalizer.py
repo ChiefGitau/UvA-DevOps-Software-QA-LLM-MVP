@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from app.normalizers.bandit_normalizer import BanditNormalizer
 from app.normalizers.base import NormalizationContext
 

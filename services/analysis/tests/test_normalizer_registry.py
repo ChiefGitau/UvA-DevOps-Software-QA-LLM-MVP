@@ -1,4 +1,5 @@
 """Tests for NormalizerRegistry."""
+
 from app.normalizers.bandit_normalizer import BanditNormalizer
 from app.normalizers.radon_normalizer import RadonNormalizer
 from app.normalizers.registry import NormalizerRegistry
@@ -7,12 +8,14 @@ from app.normalizers.trufflehog_normalizer import TruffleHogNormalizer
 
 
 def _registry() -> NormalizerRegistry:
-    return NormalizerRegistry([
-        BanditNormalizer(),
-        RuffNormalizer(),
-        RadonNormalizer(),
-        TruffleHogNormalizer(),
-    ])
+    return NormalizerRegistry(
+        [
+            BanditNormalizer(),
+            RuffNormalizer(),
+            RadonNormalizer(),
+            TruffleHogNormalizer(),
+        ]
+    )
 
 
 def test_registry_get_known_tools():
