@@ -1,7 +1,7 @@
-from pathlib import Path
-from app.core.containers import build_analyzer_registry, build_normalizer_registry
-from app.services.session_service import SessionService
 from app.normalizers.base import NormalizationContext
+from app.services.session_service import SessionService
+
+from app.core.containers import build_analyzer_registry, build_normalizer_registry
 
 sid = SessionService.create_session("upload", None)
 

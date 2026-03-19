@@ -5,15 +5,16 @@ from app.analyzers.radon import RadonAnalyzer
 from app.analyzers.registry import AnalyzerRegistry
 from app.analyzers.ruff import RuffAnalyzer
 from app.analyzers.trufflehog import TruffleHogAnalyzer
-from app.llm.anthropic_provider import AnthropicModel
-from app.llm.ollama_provider import OllamaModel
-from app.llm.openai_provider import OpenAIModel
-from app.llm.registry import LLMModelRegistry
 from app.normalizers.bandit_normalizer import BanditNormalizer
 from app.normalizers.radon_normalizer import RadonNormalizer
 from app.normalizers.registry import NormalizerRegistry
 from app.normalizers.ruff_normalizer import RuffNormalizer
 from app.normalizers.trufflehog_normalizer import TruffleHogNormalizer
+
+from app.llm.anthropic_provider import AnthropicModel
+from app.llm.ollama_provider import OllamaModel
+from app.llm.openai_provider import OpenAIModel
+from app.llm.registry import LLMModelRegistry
 
 
 def build_analyzer_registry() -> AnalyzerRegistry:

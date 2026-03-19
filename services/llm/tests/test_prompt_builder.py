@@ -65,3 +65,38 @@ def test_file_repair_prompt_batches_all_findings():
     idx_f401 = prompt.index("F401")
     idx_b307 = prompt.index("B307")
     assert idx_f401 < idx_b307  # line 1 before line 5
+
+
+def test_file_repair_empty_findings():
+    source = "x = 1\n"
+    prompt = build_file_repair_prompt("app/main.py", source, [])
+    assert "app/main.py" in prompt
+    assert "x = 1" in prompt
+
+
+def test_file_repair_none_line():
+    f = _make_finding(line=None)
+    prompt = build_file_repair_prompt("app/main.py", "x = 1\n", [f])
+    assert "Use of eval() detected" in prompt
+
+
+def test_file_repair_none_rule_id():
+    f = _make_finding(rule_id=None)
+    prompt = build_file_repair_prompt("app/main.py", "x = 1\n", [f])
+    assert "Use of eval() detected" in prompt
+    # rule_id parenthetical should not appear when rule_id is None
+    assert "(None)" not in prompt
+
+
+def test_system_prompt_key_rules():
+    assert "os.environ" in SYSTEM_PROMPT
+    assert "# noqa" in SYSTEM_PROMPT
+    assert "COMPLETE" in SYSTEM_PROMPT
+    assert "eval" in SYSTEM_PROMPT
+
+
+def test_repair_prompt_none_line():
+    f = _make_finding(line=None)
+    prompt = build_repair_prompt(f, "x = eval(input())", context_start_line=1)
+    assert "Use of eval() detected" in prompt
+    assert "bandit" in prompt

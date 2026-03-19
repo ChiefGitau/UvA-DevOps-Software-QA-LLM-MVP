@@ -4,6 +4,9 @@ let sortCol = -1;
 let sortAsc = true;
 
 const SEV_ORDER = {CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3};
+const SESSION_KEY = 'qrt_session_id';
+
+// ── Helpers ───────────────────────────────────────────────────────
 
 function setStatus(msg, type = 'info') {
     const el = document.getElementById('status');
@@ -14,11 +17,73 @@ function setStatus(msg, type = 'info') {
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 function hide(id) { document.getElementById(id).classList.add('hidden'); }
 
-// --- Upload ---
+function activateStep(n) {
+    [1,2,3,4].forEach(i => {
+        const el = document.getElementById('step' + i);
+        if (!el) return;
+        el.classList.remove('active', 'done');
+        if (i < n) el.classList.add('done');
+        else if (i === n) el.classList.add('active');
+    });
+}
+
+function setLoading(btnId, loading, label) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    btn.disabled = loading;
+    btn.innerHTML = loading
+        ? '<span class="spinner"></span>' + label
+        : label;
+}
+
+function escHtml(s) {
+    if (!s) return '';
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Session persistence ───────────────────────────────────────────
+
+function saveSession(id) {
+    sessionId = id;
+    localStorage.setItem(SESSION_KEY, id);
+}
+
+function clearSession() {
+    sessionId = null;
+    localStorage.removeItem(SESSION_KEY);
+    hide('sessionBanner');
+    hide('fileSection');
+    hide('resultsSection');
+    hide('repairSection');
+    hide('repairResults');
+    setStatus('', 'info');
+    currentFindings = [];
+}
+
+function restoreSession() {
+    const saved = localStorage.getItem(SESSION_KEY);
+    if (!saved) return;
+    sessionId = saved;
+    const banner = document.getElementById('sessionBanner');
+    banner.innerHTML = `
+        Resuming session <strong>${saved.slice(0, 8)}…</strong>
+        <button onclick="clearSession()">Start new session</button>
+    `;
+    show('sessionBanner');
+    // Reload files for the saved session
+    loadFiles().catch(() => {
+        // Session expired or gone — clear silently
+        clearSession();
+    });
+}
+
+// ── Upload ────────────────────────────────────────────────────────
+
 async function uploadZip() {
     const input = document.getElementById('zipFile');
     if (!input.files.length) { setStatus('Please select a ZIP file', 'error'); return; }
 
+    setLoading('uploadBtn', true, 'Uploading...');
     setStatus('Uploading...', 'info');
     const form = new FormData();
     form.append('archive', input.files[0]);
@@ -27,18 +92,27 @@ async function uploadZip() {
         const res = await fetch('/api/session/upload', { method: 'POST', body: form });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Upload failed');
-        sessionId = data.session_id;
+        saveSession(data.session_id);
+        hide('sessionBanner');
         setStatus('Upload successful! Session: ' + sessionId.slice(0, 8) + '...', 'success');
+        activateStep(2);
         await loadFiles();
-    } catch (e) { setStatus('Upload failed: ' + e.message, 'error'); }
+    } catch (e) {
+        setStatus('Upload failed: ' + e.message, 'error');
+    } finally {
+        setLoading('uploadBtn', false, 'Upload ZIP');
+    }
 }
 
-// --- Clone ---
+// ── Clone ─────────────────────────────────────────────────────────
+
 async function cloneRepo() {
     const url = document.getElementById('gitUrl').value.trim();
     if (!url) { setStatus('Please enter a GitHub URL', 'error'); return; }
 
+    setLoading('cloneBtn', true, 'Cloning...');
     setStatus('Cloning repository...', 'info');
+
     try {
         const res = await fetch('/api/session/clone', {
             method: 'POST',
@@ -47,15 +121,23 @@ async function cloneRepo() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Clone failed');
-        sessionId = data.session_id;
+        saveSession(data.session_id);
+        hide('sessionBanner');
         setStatus('Clone successful! Session: ' + sessionId.slice(0, 8) + '...', 'success');
+        activateStep(2);
         await loadFiles();
-    } catch (e) { setStatus('Clone failed: ' + e.message, 'error'); }
+    } catch (e) {
+        setStatus('Clone failed: ' + e.message, 'error');
+    } finally {
+        setLoading('cloneBtn', false, 'Clone Repo');
+    }
 }
 
-// --- File List ---
+// ── File List ─────────────────────────────────────────────────────
+
 async function loadFiles() {
     const res = await fetch(`/api/session/${sessionId}/files`);
+    if (!res.ok) throw new Error('Session not found');
     const data = await res.json();
     const files = data.files || [];
 
@@ -71,14 +153,24 @@ function toggleAll(checked) {
     document.querySelectorAll('#fileList input').forEach(cb => cb.checked = checked);
 }
 
-// --- Analyse ---
+// ── Analyse ───────────────────────────────────────────────────────
+
 async function runAnalysis() {
     const btn = document.getElementById('analyseBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Analysing...';
 
     const selected = [...document.querySelectorAll('#fileList input:checked')].map(cb => cb.value);
-    if (!selected.length) { setStatus('Select at least one file', 'error'); btn.disabled = false; btn.textContent = 'Run Analysis (all 4 tools)'; return; }
+    if (!selected.length) {
+        setStatus('Select at least one file', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Run Analysis (all 4 tools)';
+        return;
+    }
+
+    // Reset repair section for a fresh analysis
+    hide('repairResults');
+    hide('repairSection');
 
     try {
         const res = await fetch('/api/analyse', {
@@ -93,9 +185,11 @@ async function runAnalysis() {
         renderSummary(data.summary);
         renderFindings(currentFindings);
         show('resultsSection');
-        // Show repair section and load providers
+        activateStep(3);
+
         if (currentFindings.length > 0) {
             await loadProviders();
+            renderRepairHint(currentFindings.length);
             show('repairSection');
         }
 
@@ -114,6 +208,7 @@ async function runAnalysis() {
 
 // --- Summary ---
 function renderSummary(s, targetId = 'summary') {
+
     if (!s) return;
     const el = document.getElementById(targetId);
     el.innerHTML = `
@@ -125,10 +220,14 @@ function renderSummary(s, targetId = 'summary') {
     `;
 }
 
-// --- Findings Table ---
+// ── Findings Table ────────────────────────────────────────────────
+
 function renderFindings(findings) {
     const body = document.getElementById('findingsBody');
-    if (!findings.length) { body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">No findings 🎉</td></tr>'; return; }
+    if (!findings.length) {
+        body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">No findings 🎉</td></tr>';
+        return;
+    }
 
     body.innerHTML = findings.map((f, i) => `<tr>
         <td>${i + 1}</td>
@@ -142,12 +241,8 @@ function renderFindings(findings) {
     </tr>`).join('');
 }
 
-function escHtml(s) {
-    if (!s) return '';
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
+// ── Sort ──────────────────────────────────────────────────────────
 
-// --- Sort ---
 function sortTable(col) {
     if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
 
@@ -165,27 +260,28 @@ function sortTable(col) {
     renderFindings(currentFindings);
 }
 
-// --- LLM Model Selection ---
+// ── LLM Model Selection ───────────────────────────────────────────
+
 async function loadProviders() {
     try {
         const res = await fetch('/api/llm/providers');
         const data = await res.json();
         const select = document.getElementById('providerSelect');
         select.innerHTML = '';
-        // Auto option (routes by severity)
+
         const autoOpt = document.createElement('option');
         autoOpt.value = '';
         autoOpt.textContent = 'Auto (route by severity)';
         autoOpt.selected = true;
         select.appendChild(autoOpt);
-        // Configured models
+
         (data.configured || []).forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
             opt.textContent = name;
             select.appendChild(opt);
         });
-        // Unconfigured models (greyed out)
+
         (data.available || []).filter(n => !(data.configured || []).includes(n)).forEach(name => {
             const opt = document.createElement('option');
             opt.value = name;
@@ -196,15 +292,37 @@ async function loadProviders() {
     } catch (e) { console.error('Failed to load models:', e); }
 }
 
-// --- Repair ---
+// Show how many findings will be repaired vs total
+function renderRepairHint(totalCount) {
+    const CAP = 10; // mirrors MAX_REPAIR_ISSUES default
+    const hint = document.querySelector('.repair-hint');
+    if (!hint) return;
+    const nonSecret = currentFindings.filter(f => f.type !== 'SECRET').length;
+    const willRepair = Math.min(nonSecret, CAP);
+    if (nonSecret > CAP) {
+        hint.textContent = `Top ${willRepair} of ${nonSecret} findings will be repaired (secrets excluded, sorted by severity)`;
+        hint.style.color = 'var(--warning)';
+    } else {
+        hint.textContent = `${willRepair} finding${willRepair !== 1 ? 's' : ''} queued for repair`;
+        hint.style.color = 'var(--muted)';
+    }
+}
+
+// ── Repair ────────────────────────────────────────────────────────
+
 async function runRepair() {
     const btn = document.getElementById('repairBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Repairing...';
 
+
     // Reset verification state from any previous run
-    hide('verificationSection');
+
     hide('verificationResults');
+
+    // Hide previous results while re-running
+    hide('repairResults');
+
 
     const provider = document.getElementById('providerSelect').value || null;
 
@@ -219,11 +337,13 @@ async function runRepair() {
 
         renderRepairResults(data);
         show('repairResults');
+
         setStatus(`Repair complete: ${data.repaired_count} patches applied via ${data.provider_used}. Now run verification ↓`, 'success');
 
         // Reveal Step 5 automatically after a successful repair
         show('verificationSection');
         document.getElementById('verificationSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
     } catch (e) {
         setStatus('Repair failed: ' + e.message, 'error');
     } finally {
@@ -235,11 +355,17 @@ async function runRepair() {
 function renderRepairResults(data) {
     const summaryEl = document.getElementById('repairSummary');
     const tu = data.token_usage || {};
+    const cost = tu.total_cost_usd;
+    const costBadge = cost > 0
+        ? `<span class="badge total">$${cost.toFixed(6)}</span>`
+        : `<span class="badge total">Free (local)</span>`;
+
     summaryEl.innerHTML = `
         <span class="badge total">${(data.patches || []).length} Patches</span>
         <span class="badge high">${data.repaired_count || 0} Applied</span>
         <span class="badge medium">${tu.total_tokens || 0} Tokens</span>
         <span class="badge low">${tu.remaining || 0} Remaining</span>
+        ${costBadge}
         <span class="badge">${data.provider_used || '?'}</span>
     `;
 
@@ -261,6 +387,7 @@ function renderRepairResults(data) {
         </div>
     `).join('');
 }
+
 
 // --- Verification ---
 async function runVerification() {
@@ -327,3 +454,4 @@ function renderVerificationResults(data) {
         hide('regressionWarning');
     }
 }
+
