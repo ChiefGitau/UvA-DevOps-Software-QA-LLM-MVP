@@ -27,6 +27,8 @@ async def log_requests(request: Request, call_next):
     _logger.info("%s %s → %d (%.0fms)", request.method, request.url.path, response.status_code, duration_ms)
     return response
 
+#aws running
+
 
 # API routers
 app.include_router(repair_router)
