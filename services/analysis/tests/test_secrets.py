@@ -78,5 +78,7 @@ def test_dockerignore_excludes_env():
 
 def test_config_reads_from_env():
     """Settings must read secrets from environment, not hardcode them."""
-    config_text = Path("app/core/config.py").read_text()
+    # Path is relative to the service root (services/analysis/), not the repo root
+    service_root = Path(__file__).parent.parent
+    config_text = (service_root / "app" / "core" / "config.py").read_text()
     assert "os.getenv" in config_text, "config.py must use os.getenv for secrets"
