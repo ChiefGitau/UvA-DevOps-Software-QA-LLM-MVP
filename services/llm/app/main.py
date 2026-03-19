@@ -28,7 +28,6 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# API routers
 app.include_router(repair_router)
 
 
