@@ -41,3 +41,4 @@ terraform.tfvars
 services/frontend/DESIGN_UPGRADES.md
 services/frontend/VERIFICATION_VISUALS.md
 services/llm-agent/PLAN.md
+docs/
