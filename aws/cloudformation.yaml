@@ -313,7 +313,7 @@ Resources:
   ServiceDiscoveryNamespace:
     Type: AWS::ServiceDiscovery::PrivateDnsNamespace
     Properties:
-      Name: svc
+      Name: !Sub "${ProjectName}.svc"
       Vpc: !Ref VPC
       Description: Service discovery for p4 qallm
 
@@ -325,6 +325,8 @@ Resources:
 
   LogGroup:
     Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       LogGroupName: !Sub "/ecs/${ProjectName}"
       RetentionInDays: 7
@@ -594,9 +596,9 @@ Resources:
           HealthCheck:
             Command: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
             Interval: 30
-            Timeout: 5
-            Retries: 3
-            StartPeriod: 60
+            Timeout: 10
+            Retries: 5
+            StartPeriod: 120
           LogConfiguration:
             LogDriver: awslogs
             Options:

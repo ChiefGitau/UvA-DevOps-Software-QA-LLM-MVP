@@ -161,7 +161,7 @@ jobs:
     name: Deploy to AWS
     needs: [build-frontend, build-session, build-analysis, build-llm, build-llm-agent]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository
@@ -188,25 +188,3 @@ jobs:
             GitHubUsername=chiefgitau,
             GitHubToken=${{ secrets.PAT }},
             ImageTag=${{ github.event.workflow_run.head_sha }}
-
-      - name: Force ECS redeployment
-        run: |
-          for service in frontend session-service analysis-service llm-service llm-agent-service; do
-            echo "Redeploying $service..."
-            aws ecs update-service \
-              --cluster ${{ env.ECS_CLUSTER }} \
-              --service $service \
-              --force-new-deployment \
-              --output text \
-              --query 'service.serviceName'
-          done
-
-      - name: Wait for ECS services to stabilise
-        run: |
-          for service in frontend session-service analysis-service llm-service llm-agent-service; do
-            echo "Waiting for $service to stabilise..."
-            aws ecs wait services-stable \
-              --cluster ${{ env.ECS_CLUSTER }} \
-              --services $service
-            echo "$service is stable ✓"
-          done
