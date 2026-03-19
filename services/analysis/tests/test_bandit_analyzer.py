@@ -38,3 +38,47 @@ def test_bandit_analyzer_uses_run_cmd_and_writes_file(tmp_path, monkeypatch):
     r = BanditAnalyzer().analyze(ws, reports)
     assert r.exit_code == 0
     assert (reports / "bandit.json").exists()
+
+
+def test_bandit_tool_name():
+    assert BanditAnalyzer().tool_name() == "bandit"
+
+
+def test_bandit_nonzero_exit_preserved(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    ws = tmp_path / "ws"
+    reports.mkdir()
+    ws.mkdir()
+
+    monkeypatch.setattr("app.analyzers.bandit.shutil.which", lambda _: "/usr/bin/bandit")
+
+    class Dummy:
+        exit_code = 1
+        stdout = ""
+        stderr = "some bandit warning"
+
+    monkeypatch.setattr("app.analyzers.bandit.run_cmd", lambda *args, **kwargs: Dummy())
+
+    r = BanditAnalyzer().analyze(ws, reports)
+    assert r.exit_code == 1
+    assert r.stderr == "some bandit warning"
+
+
+def test_bandit_artifact_field(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    ws = tmp_path / "ws"
+    reports.mkdir()
+    ws.mkdir()
+
+    monkeypatch.setattr("app.analyzers.bandit.shutil.which", lambda _: "/usr/bin/bandit")
+
+    class Dummy:
+        exit_code = 0
+        stdout = ""
+        stderr = ""
+
+    monkeypatch.setattr("app.analyzers.bandit.run_cmd", lambda *args, **kwargs: Dummy())
+
+    r = BanditAnalyzer().analyze(ws, reports)
+    assert r.artifact == "bandit.json"
+    assert r.tool == "bandit"

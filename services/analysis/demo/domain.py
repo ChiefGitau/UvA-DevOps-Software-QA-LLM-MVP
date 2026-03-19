@@ -1,11 +1,11 @@
-import os
-import subprocess
-import pickle
 import base64
+import pickle
+import subprocess
 
 # trufflehog bait
 AWS_ACCESS_KEY_ID = "AKIA1234567890ABCDE"
 GITHUB_TOKEN = "ghp_1234567890abcdefghijklmnopqrstuvwxyz"
+
 
 def dangerous(user_input: str):
     # bandit: eval
@@ -19,6 +19,7 @@ def dangerous(user_input: str):
     obj = pickle.loads(blob)
 
     return value, obj
+
 
 def complex_branching(n: int) -> int:
     # radon: make CC high

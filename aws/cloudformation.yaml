@@ -28,6 +28,10 @@ Parameters:
   OllamaBaseUrl:
     Type: String
     Default: ""
+  ImageTag:
+    Type: String
+    Default: "latest"
+    Description: "Docker image tag to deploy (Git SHA passed by CD pipeline)"
 
 Resources:
   # --- VPC Networking ---
@@ -174,7 +178,6 @@ Resources:
   ECSTaskExecutionRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${ProjectName}-task-execution-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -207,7 +210,6 @@ Resources:
   ECSTaskRole:
     Type: AWS::IAM::Role
     Properties:
-      RoleName: !Sub "${ProjectName}-task-role"
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
         Statement:
@@ -273,7 +275,7 @@ Resources:
       SecurityGroups: [!Ref ALBSecurityGroup]
       LoadBalancerAttributes:
         - Key: idle_timeout.timeout_seconds
-          Value: "300"
+          Value: "600"
       Tags:
         - Key: Name
           Value: !Sub "${ProjectName}-alb"
@@ -318,7 +320,6 @@ Resources:
   GHCRSecret:
     Type: AWS::SecretsManager::Secret
     Properties:
-      Name: !Sub "${ProjectName}-ghcr-auth"
       Description: "GHCR Authentication Token"
       SecretString: !Sub '{"username":"${GitHubUsername}","password":"${GitHubToken}"}'
 
@@ -352,7 +353,7 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: session-service
-          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-session:latest"
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-session:${ImageTag}"
           RepositoryCredentials:
             CredentialsParameter: !Ref GHCRSecret
           PortMappings:
@@ -423,7 +424,7 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: analysis-service
-          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-analysis:latest"
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-analysis:${ImageTag}"
           RepositoryCredentials:
             CredentialsParameter: !Ref GHCRSecret
           PortMappings:
@@ -494,7 +495,7 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: llm-service
-          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-llm:latest"
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-llm:${ImageTag}"
           RepositoryCredentials:
             CredentialsParameter: !Ref GHCRSecret
           PortMappings:
@@ -548,6 +549,90 @@ Resources:
       ServiceRegistries:
         - RegistryArn: !GetAtt LLMServiceDiscovery.Arn
 
+  # --- LLM Agent Service ---
+  LLMAgentServiceDiscovery:
+    Type: AWS::ServiceDiscovery::Service
+    Properties:
+      Name: llm-agent-service
+      DnsConfig:
+        NamespaceId: !Ref ServiceDiscoveryNamespace
+        RoutingPolicy: MULTIVALUE
+        DnsRecords:
+          - Type: A
+            TTL: 60
+
+  LLMAgentTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-llm-agent"
+      NetworkMode: awsvpc
+      RequiresCompatibilities: [FARGATE]
+      Cpu: "1024"
+      Memory: "2048"
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt ECSTaskRole.Arn
+      ContainerDefinitions:
+        - Name: llm-agent-service
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-llm-agent:${ImageTag}"
+          RepositoryCredentials:
+            CredentialsParameter: !Ref GHCRSecret
+          PortMappings:
+            - ContainerPort: 8000
+          Environment:
+            - Name: DATA_DIR
+              Value: /app/data
+            - Name: OPENAI_API_KEY
+              Value: !Ref OpenAIApiKey
+            - Name: ANTHROPIC_API_KEY
+              Value: !Ref AnthropicApiKey
+            - Name: OLLAMA_BASE_URL
+              Value: !Ref OllamaBaseUrl
+          MountPoints:
+            - ContainerPath: /app/data
+              SourceVolume: app-data
+              ReadOnly: false
+          HealthCheck:
+            Command: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 60
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: llm-agent
+      Volumes:
+        - Name: app-data
+          EFSVolumeConfiguration:
+            FilesystemId: !Ref EFSFileSystem
+            TransitEncryption: ENABLED
+            AuthorizationConfig:
+              AccessPointId: !Ref EFSAccessPoint
+              IAM: ENABLED
+
+  LLMAgentService:
+    Type: AWS::ECS::Service
+    DependsOn:
+      - EFSMountTarget0
+      - EFSMountTarget1
+      - EFSAccessPoint
+      - ECSSecurityGroupIngressSelf
+    Properties:
+      ServiceName: llm-agent-service
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref LLMAgentTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups: [!Ref ECSSecurityGroup]
+          Subnets: [!Ref PublicSubnet0, !Ref PublicSubnet1]
+      ServiceRegistries:
+        - RegistryArn: !GetAtt LLMAgentServiceDiscovery.Arn
+
   FrontendTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
@@ -559,7 +644,7 @@ Resources:
       ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
       ContainerDefinitions:
         - Name: frontend
-          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-frontend:latest"
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-frontend:${ImageTag}"
           RepositoryCredentials:
             CredentialsParameter: !Ref GHCRSecret
           PortMappings:

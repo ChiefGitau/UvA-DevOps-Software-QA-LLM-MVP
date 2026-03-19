@@ -3,6 +3,9 @@
 import re
 from pathlib import Path
 
+# Repo root: walk up from this file (tests/ → services/analysis/ → services/ → repo root)
+ROOT = Path(__file__).parent.parent.parent.parent
+
 # Patterns that indicate hardcoded secrets (not in demo/ which is intentionally buggy)
 SECRET_PATTERNS = [
     (r"AKIA[0-9A-Z]{16}", "AWS Access Key"),
@@ -43,7 +46,7 @@ def test_no_hardcoded_secrets_in_app():
 
 
 def test_env_example_exists_and_has_content():
-    p = Path(".env.example")
+    p = ROOT / ".env.example"
     assert p.exists(), ".env.example must exist"
     text = p.read_text()
     assert len(text.strip()) > 0, ".env.example must not be empty"
@@ -52,7 +55,7 @@ def test_env_example_exists_and_has_content():
 
 def test_env_example_has_no_real_values():
     """OPENAI_API_KEY in .env.example must be blank (no real key committed)."""
-    text = Path(".env.example").read_text()
+    text = (ROOT / ".env.example").read_text()
     for line in text.splitlines():
         if line.startswith("OPENAI_API_KEY"):
             val = line.split("=", 1)[1].strip()
@@ -60,14 +63,14 @@ def test_env_example_has_no_real_values():
 
 
 def test_gitignore_excludes_env():
-    p = Path(".gitignore")
+    p = ROOT / ".gitignore"
     assert p.exists()
     text = p.read_text()
     assert ".env" in text, ".gitignore must exclude .env"
 
 
 def test_dockerignore_excludes_env():
-    p = Path(".dockerignore")
+    p = ROOT / ".dockerignore"
     assert p.exists()
     text = p.read_text()
     assert ".env" in text, ".dockerignore must exclude .env from image"
@@ -75,5 +78,7 @@ def test_dockerignore_excludes_env():
 
 def test_config_reads_from_env():
     """Settings must read secrets from environment, not hardcode them."""
-    config_text = Path("app/core/config.py").read_text()
+    # Path is relative to the service root (services/analysis/), not the repo root
+    service_root = Path(__file__).parent.parent
+    config_text = (service_root / "app" / "core" / "config.py").read_text()
     assert "os.getenv" in config_text, "config.py must use os.getenv for secrets"

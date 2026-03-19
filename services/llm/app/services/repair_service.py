@@ -260,8 +260,7 @@ def run_repair(
             )
             # Retry once: feed the syntax error back so the LLM can self-correct
             retry_prompt = (
-                user_prompt
-                + f"\n\n## Your previous response had a Python syntax error:\n"
+                user_prompt + f"\n\n## Your previous response had a Python syntax error:\n"
                 f"  {first_err}\n"
                 "Fix this syntax error. Ensure every 'try' block has a matching "
                 "'except' or 'finally'. Return the COMPLETE corrected file."

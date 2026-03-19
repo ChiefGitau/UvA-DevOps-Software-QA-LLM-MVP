@@ -11,6 +11,8 @@ services:
         condition: service_healthy
       llm-service:
         condition: service_healthy
+      llm-agent-service:
+        condition: service_healthy
     networks:
       app-network:
         aliases:
@@ -69,6 +71,27 @@ services:
       app-network:
         aliases:
           - llm-service.svc
+
+  llm-agent-service:
+    build:
+      context: ./services/llm-agent
+    environment:
+      - DATA_DIR=/app/data
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
+    volumes:
+      - app-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      app-network:
+        aliases:
+          - llm-agent-service.svc
 
 networks:
   app-network:

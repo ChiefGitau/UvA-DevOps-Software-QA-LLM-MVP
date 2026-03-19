@@ -1,26 +1,35 @@
 name: CD – Build & Deploy
 
 on:
-  push:
-    branches: [QALLM24-AWS]
   workflow_run:
     workflows: ["CI – Lint & Test"]
     types: [completed]
     branches: [QALLM24-AWS]
 
+# Only one deploy can run at a time per branch.
+# If a new commit is pushed while a deploy is running, the old one is cancelled.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
   packages: write
 
-jobs:
-  deploy:
-    name: Build and Push to GHCR
-    if: ${{ github.event_name == 'push' || github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}
+env:
+  REGISTRY: ghcr.io
+  IMAGE_BASE: ghcr.io/chiefgitau/uva-devops-software-qa-llm-mvp
+  ECS_CLUSTER: qallm-mvp-cluster
+  AWS_REGION: eu-north-1
 
+# ── Build jobs (run in parallel) ──────────────────────────────────────────────
+
+jobs:
+  build-frontend:
+    name: Build & Push Frontend
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -32,51 +41,140 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-
-      # Build and Push services using fixed tags to ensure lower-case
-      - name: Build and push Frontend
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: ./services/frontend
           push: true
-          tags: ghcr.io/chiefgitau/uva-devops-software-qa-llm-mvp-frontend:latest
+          tags: |
+            ${{ env.IMAGE_BASE }}-frontend:latest
+            ${{ env.IMAGE_BASE }}-frontend:${{ github.sha }}
 
-      - name: Build and push Session Service
+  build-session:
+    name: Build & Push Session Service
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: ./services/session
           push: true
-          tags: ghcr.io/chiefgitau/uva-devops-software-qa-llm-mvp-session:latest
+          tags: |
+            ${{ env.IMAGE_BASE }}-session:latest
+            ${{ env.IMAGE_BASE }}-session:${{ github.sha }}
 
-      - name: Build and push Analysis Service
+  build-analysis:
+    name: Build & Push Analysis Service
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: ./services/analysis
           push: true
-          tags: ghcr.io/chiefgitau/uva-devops-software-qa-llm-mvp-analysis:latest
+          tags: |
+            ${{ env.IMAGE_BASE }}-analysis:latest
+            ${{ env.IMAGE_BASE }}-analysis:${{ github.sha }}
 
-      - name: Build and push LLM Service
+  build-llm:
+    name: Build & Push LLM Service
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
         uses: docker/build-push-action@v5
         with:
           context: ./services/llm
           push: true
-          tags: ghcr.io/chiefgitau/uva-devops-software-qa-llm-mvp-llm:latest
+          tags: |
+            ${{ env.IMAGE_BASE }}-llm:latest
+            ${{ env.IMAGE_BASE }}-llm:${{ github.sha }}
 
-      # Authenticate with AWS
+  build-llm-agent:
+    name: Build & Push LLM Agent Service
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./services/llm-agent
+          push: true
+          tags: |
+            ${{ env.IMAGE_BASE }}-llm-agent:latest
+            ${{ env.IMAGE_BASE }}-llm-agent:${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.IMAGE_BASE }}-llm-agent:cache
+          cache-to: type=registry,ref=${{ env.IMAGE_BASE }}-llm-agent:cache,mode=max
+
+# ── Deploy job (runs after all builds succeed) ────────────────────────────────
+
+  deploy:
+    name: Deploy to AWS
+    needs: [build-frontend, build-session, build-analysis, build-llm, build-llm-agent]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-north-1
+          aws-region: ${{ env.AWS_REGION }}
 
-      # Deploy/Update Infrastructure with CloudFormation
-      - name: Deploy CloudFormation Stack
+      - name: Deploy CloudFormation stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: qallm-mvp-stack
@@ -88,12 +186,27 @@ jobs:
             AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY }},
             OllamaBaseUrl=${{ secrets.OLLAMA_BASE_URL }},
             GitHubUsername=chiefgitau,
-            GitHubToken=${{ secrets.PAT }}
+            GitHubToken=${{ secrets.PAT }},
+            ImageTag=${{ github.event.workflow_run.head_sha }}
 
-      # Force ECS to pull the new 'latest' images from GHCR
-      - name: Force ECS Redeployment
+      - name: Force ECS redeployment
         run: |
-          aws ecs update-service --cluster qallm-mvp-cluster --service frontend --force-new-deployment
-          aws ecs update-service --cluster qallm-mvp-cluster --service session-service --force-new-deployment
-          aws ecs update-service --cluster qallm-mvp-cluster --service analysis-service --force-new-deployment
-          aws ecs update-service --cluster qallm-mvp-cluster --service llm-service --force-new-deployment
+          for service in frontend session-service analysis-service llm-service llm-agent-service; do
+            echo "Redeploying $service..."
+            aws ecs update-service \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --service $service \
+              --force-new-deployment \
+              --output text \
+              --query 'service.serviceName'
+          done
+
+      - name: Wait for ECS services to stabilise
+        run: |
+          for service in frontend session-service analysis-service llm-service llm-agent-service; do
+            echo "Waiting for $service to stabilise..."
+            aws ecs wait services-stable \
+              --cluster ${{ env.ECS_CLUSTER }} \
+              --services $service
+            echo "$service is stable ✓"
+          done

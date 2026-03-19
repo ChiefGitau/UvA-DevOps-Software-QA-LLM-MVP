@@ -1,9 +1,54 @@
 let sessionId = null;
 let currentFindings = [];
+let pendingRegressionIds = [];
 let sortCol = -1;
 let sortAsc = true;
+let _healthPollTimer = null;
 
 const SEV_ORDER = {CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3};
+
+// --- Service health indicator ---
+const HEALTH_ENDPOINTS = {
+    simple: '/api/health/llm',
+    agent:  '/api/health/agent',
+};
+
+async function checkServiceHealth() {
+    const mode = document.getElementById('repairMode')?.value || 'simple';
+    const dot  = document.getElementById('modeStatusDot');
+    if (!dot) return;
+
+    dot.className = 'status-dot dot-unknown';
+    dot.title = 'Checking service…';
+
+    try {
+        const res = await fetch(HEALTH_ENDPOINTS[mode], { method: 'GET', cache: 'no-store' });
+        if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            const svc  = data.service || (mode === 'agent' ? 'agent pipeline' : 'LLM service');
+            dot.className = 'status-dot dot-online';
+            dot.title = `${svc} is online`;
+        } else {
+            dot.className = 'status-dot dot-offline';
+            dot.title = `Service unavailable (HTTP ${res.status})`;
+        }
+    } catch {
+        dot.className = 'status-dot dot-offline';
+        dot.title = 'Service unreachable';
+    }
+}
+
+function onModeChange() {
+    checkServiceHealth();
+}
+
+function startHealthPolling() {
+    checkServiceHealth();
+    clearInterval(_healthPollTimer);
+    _healthPollTimer = setInterval(checkServiceHealth, 30_000);
+}
+
+document.addEventListener('DOMContentLoaded', startHealthPolling);
 
 function setStatus(msg, type = 'info') {
     const el = document.getElementById('status');
@@ -13,6 +58,37 @@ function setStatus(msg, type = 'info') {
 
 function show(id) { document.getElementById(id).classList.remove('hidden'); }
 function hide(id) { document.getElementById(id).classList.add('hidden'); }
+
+async function fetchJSON(url, options = {}) {
+    const res = await fetch(url, options);
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+        throw new Error(`Server error (HTTP ${res.status}) — upstream service may be unavailable`);
+    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    return data;
+}
+
+function showBusy(label) {
+    show('progressBar');
+    document.getElementById('overlayLabel').textContent = label;
+    show('resultsBusyOverlay');
+}
+function hideBusy() {
+    hide('progressBar');
+    hide('resultsBusyOverlay');
+}
+
+// --- Stepper ---
+function setStep(active) {
+    for (let i = 1; i <= 5; i++) {
+        const el = document.getElementById('step-' + i);
+        el.classList.remove('active', 'completed');
+        if (i < active) el.classList.add('completed');
+        else if (i === active) el.classList.add('active');
+    }
+}
 
 // --- Upload ---
 async function uploadZip() {
@@ -24,9 +100,7 @@ async function uploadZip() {
     form.append('archive', input.files[0]);
 
     try {
-        const res = await fetch('/api/session/upload', { method: 'POST', body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Upload failed');
+        const data = await fetchJSON('/api/session/upload', { method: 'POST', body: form });
         sessionId = data.session_id;
         setStatus('Upload successful! Session: ' + sessionId.slice(0, 8) + '...', 'success');
         await loadFiles();
@@ -40,13 +114,11 @@ async function cloneRepo() {
 
     setStatus('Cloning repository...', 'info');
     try {
-        const res = await fetch('/api/session/clone', {
+        const data = await fetchJSON('/api/session/clone', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ git_url: url }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Clone failed');
         sessionId = data.session_id;
         setStatus('Clone successful! Session: ' + sessionId.slice(0, 8) + '...', 'success');
         await loadFiles();
@@ -55,8 +127,7 @@ async function cloneRepo() {
 
 // --- File List ---
 async function loadFiles() {
-    const res = await fetch(`/api/session/${sessionId}/files`);
-    const data = await res.json();
+    const data = await fetchJSON(`/api/session/${sessionId}/files`);
     const files = data.files || [];
 
     const container = document.getElementById('fileList');
@@ -65,6 +136,7 @@ async function loadFiles() {
     ).join('');
     document.getElementById('fileCount').textContent = `${files.length} files`;
     show('fileSection');
+    setStep(2);
 }
 
 function toggleAll(checked) {
@@ -80,23 +152,25 @@ async function runAnalysis() {
     const selected = [...document.querySelectorAll('#fileList input:checked')].map(cb => cb.value);
     if (!selected.length) { setStatus('Select at least one file', 'error'); btn.disabled = false; btn.textContent = 'Run Analysis (all 4 tools)'; return; }
 
+    show('resultsSection');
+    showBusy('Analysing…');
+
     try {
-        const res = await fetch('/api/analyse', {
+        const data = await fetchJSON('/api/analyse', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ session_id: sessionId, selected_files: selected }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Analysis failed');
 
         currentFindings = data.findings || [];
         renderSummary(data.summary);
         renderFindings(currentFindings);
-        show('resultsSection');
+        setStep(3);
         // Show repair section and load providers
         if (currentFindings.length > 0) {
             await loadProviders();
             show('repairSection');
+            setStep(4);
         }
 
         // Hide verification from a previous run when re-analysing
@@ -107,6 +181,7 @@ async function runAnalysis() {
     } catch (e) {
         setStatus('Analysis failed: ' + e.message, 'error');
     } finally {
+        hideBusy();
         btn.disabled = false;
         btn.textContent = 'Run Analysis (all 4 tools)';
     }
@@ -128,7 +203,16 @@ function renderSummary(s, targetId = 'summary') {
 // --- Findings Table ---
 function renderFindings(findings) {
     const body = document.getElementById('findingsBody');
-    if (!findings.length) { body.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--muted)">No findings 🎉</td></tr>'; return; }
+    const wrap = body.closest('.findings-table-wrap');
+    const empty = document.getElementById('findingsEmpty');
+    if (!findings.length) {
+        body.innerHTML = '';
+        wrap.classList.add('hidden');
+        empty.classList.remove('hidden');
+        return;
+    }
+    wrap.classList.remove('hidden');
+    empty.classList.add('hidden');
 
     body.innerHTML = findings.map((f, i) => `<tr>
         <td>${i + 1}</td>
@@ -168,8 +252,7 @@ function sortTable(col) {
 // --- LLM Model Selection ---
 async function loadProviders() {
     try {
-        const res = await fetch('/api/llm/providers');
-        const data = await res.json();
+        const data = await fetchJSON('/api/llm/providers');
         const select = document.getElementById('providerSelect');
         select.innerHTML = '';
         // Auto option (routes by severity)
@@ -206,16 +289,19 @@ async function runRepair() {
     hide('verificationSection');
     hide('verificationResults');
 
+    const mode = document.getElementById('repairMode').value;
+    const endpoint = mode === 'agent'
+        ? `/api/repair-agent/${sessionId}`
+        : `/api/repair/${sessionId}`;
+    showBusy(mode === 'agent' ? 'Running agent pipeline…' : 'Repairing…');
     const provider = document.getElementById('providerSelect').value || null;
 
     try {
-        const res = await fetch(`/api/repair/${sessionId}`, {
+        const data = await fetchJSON(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ provider: provider }),
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.detail || 'Repair failed');
 
         renderRepairResults(data);
         show('repairResults');
@@ -223,12 +309,48 @@ async function runRepair() {
 
         // Reveal Step 5 automatically after a successful repair
         show('verificationSection');
+        setStep(5);
         document.getElementById('verificationSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (e) {
         setStatus('Repair failed: ' + e.message, 'error');
     } finally {
+        hideBusy();
         btn.disabled = false;
         btn.textContent = 'Repair Findings';
+    }
+}
+
+async function reRunRepair() {
+    if (!pendingRegressionIds.length) return;
+    const btn = document.getElementById('reRepairBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Repairing…';
+    hide('verificationResults');
+    showBusy('Re-repairing regressions…');
+
+    const provider = document.getElementById('providerSelect').value || null;
+    const mode = document.getElementById('repairMode').value;
+    const endpoint = mode === 'agent'
+        ? `/api/repair-agent/${sessionId}`
+        : `/api/repair/${sessionId}`;
+    try {
+        const data = await fetchJSON(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ provider, finding_ids: pendingRegressionIds }),
+        });
+        renderRepairResults(data);
+        show('repairResults');
+        show('verificationResults');
+        setStatus(`Re-repair complete: ${data.repaired_count} patches applied. Run Verification again to check.`, 'success');
+        document.getElementById('verifyBtn').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (e) {
+        show('verificationResults');
+        setStatus('Re-repair failed: ' + e.message, 'error');
+    } finally {
+        hideBusy();
+        btn.disabled = false;
+        btn.textContent = 'Re-repair regressions';
     }
 }
 
@@ -268,22 +390,17 @@ async function runVerification() {
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span>Re-running analysis...';
     setStatus('Running post-repair analysis...', 'info');
+    showBusy('Verifying…');
 
     try {
-        const res = await fetch(`/api/verify/${sessionId}`, {
+        const data = await fetchJSON(`/api/verify/${sessionId}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}),
         });
-        const data = await res.json();
-        if (!res.ok) {
-          const detail = data.detail;
-          const msg = typeof detail === 'string' ? detail : JSON.stringify(detail);
-          throw new Error(msg || 'Verification failed');
-        }
 
-        renderVerificationResults(data);
         show('verificationResults');
+        requestAnimationFrame(() => renderVerificationResults(data));
 
         const improved = (data.before.total - data.after.total);
         const pct = data.before.total > 0
@@ -299,12 +416,333 @@ async function runVerification() {
     } catch (e) {
         setStatus('Verification failed: ' + e.message, 'error');
     } finally {
+        hideBusy();
         btn.disabled = false;
         btn.textContent = 'Run Verification';
     }
 }
 
+// ── Chart helpers ────────────────────────────────────────────────
+const _charts = {};
+function destroyChart(id) {
+    if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+}
+
+function renderSeverityChart(before, after) {
+    destroyChart('chartSeverity');
+    const SEV_LABELS = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
+    const SEV_COLORS = ['#ef4444', '#fd7e14', '#f59e0b', '#38bdf8'];
+    const canvas = document.getElementById('chartSeverity');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    _charts['chartSeverity'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: SEV_LABELS,
+            datasets: [
+                {
+                    label: 'Before',
+                    data: SEV_LABELS.map(s => before.by_severity[s] || 0),
+                    backgroundColor: '#94a3b8',
+                    borderRadius: 4,
+                    barPercentage: 0.7,
+                },
+                {
+                    label: 'After',
+                    data: SEV_LABELS.map(s => after.by_severity[s] || 0),
+                    backgroundColor: SEV_COLORS,
+                    borderRadius: 4,
+                    barPercentage: 0.7,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { position: 'top', align: 'end' },
+                tooltip: {
+                    callbacks: {
+                        footer(items) {
+                            const sev = items[0].label;
+                            const b = before.by_severity[sev] || 0;
+                            const a = after.by_severity[sev] || 0;
+                            const fixed = b - a;
+                            return fixed > 0 ? `▼ ${fixed} fixed` : fixed < 0 ? `▲ ${Math.abs(fixed)} new` : 'No change';
+                        },
+                    },
+                },
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, precision: 0 },
+                    grid: { color: '#f1f5f9' },
+                },
+                x: { grid: { display: false } },
+            },
+        },
+    });
+}
+
+function renderOutcomeChart(resolved, remaining, newCount) {
+    destroyChart('chartOutcome');
+    const wrap = document.getElementById('chartOutcomeWrap');
+
+    // Hide when everything is resolved — a 100% green donut adds no info
+    if (remaining === 0 && newCount === 0) {
+        wrap.classList.add('hidden');
+        return;
+    }
+    wrap.classList.remove('hidden');
+
+    const labels = ['Resolved', 'Remaining', 'New'];
+    const values = [resolved, remaining, newCount];
+    const colors = ['#10b981', '#f59e0b', '#ef4444'];
+
+    // Drop zero-value segments
+    const filtered = labels.reduce((acc, l, i) => {
+        if (values[i] > 0) acc.push({ label: l, value: values[i], color: colors[i] });
+        return acc;
+    }, []);
+
+    const canvas = document.getElementById('chartOutcome');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    _charts['chartOutcome'] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: filtered.map(d => d.label),
+            datasets: [{
+                data: filtered.map(d => d.value),
+                backgroundColor: filtered.map(d => d.color),
+                borderWidth: 2,
+                borderColor: '#fff',
+                hoverOffset: 6,
+            }],
+        },
+        options: {
+            cutout: '70%',
+            responsive: true,
+            plugins: {
+                legend: { position: 'bottom', labels: { padding: 12, boxWidth: 12 } },
+                tooltip: {
+                    callbacks: {
+                        label(item) {
+                            const total = resolved + remaining + newCount;
+                            const pct = Math.round((item.raw / total) * 100);
+                            return ` ${item.raw} (${pct}%)`;
+                        },
+                    },
+                },
+            },
+        },
+        plugins: [{
+            id: 'centreLabel',
+            afterDraw(chart) {
+                const { ctx: c, chartArea: { width, height, left, top } } = chart;
+                const total = resolved + remaining + newCount;
+                c.save();
+                c.textAlign = 'center';
+                c.textBaseline = 'middle';
+                const cx = left + width / 2;
+                const cy = top + height / 2;
+                c.font = 'bold 1.4rem Inter, sans-serif';
+                c.fillStyle = '#0f172a';
+                c.fillText(total, cx, cy - 8);
+                c.font = '0.7rem Inter, sans-serif';
+                c.fillStyle = '#64748b';
+                c.fillText('total', cx, cy + 12);
+                c.restore();
+            },
+        }],
+    });
+}
+
+function sevColor(sev) {
+    return { CRITICAL: '#ef4444', HIGH: '#fd7e14', MEDIUM: '#f59e0b', LOW: '#38bdf8' }[sev] || '#94a3b8';
+}
+
+function renderFileTreemap(resolvedIds) {
+    destroyChart('chartFiles');
+    const canvas = document.getElementById('chartFiles');
+    if (!canvas) return;
+
+    const resolved = new Set(resolvedIds || []);
+
+    const fileMap = {};
+    currentFindings
+        .filter(f => !resolved.has(f.id))
+        .forEach(f => {
+            const file = f.file || '(unknown)';
+            if (!fileMap[file]) fileMap[file] = { count: 0, worstSev: 'LOW' };
+            fileMap[file].count++;
+            if (SEV_ORDER[f.severity] < SEV_ORDER[fileMap[file].worstSev])
+                fileMap[file].worstSev = f.severity;
+        });
+
+    const tree = Object.entries(fileMap).map(([file, d]) => ({
+        file,
+        label: file.split('/').pop(),
+        count: d.count,
+        worstSev: d.worstSev,
+    }));
+
+    if (!tree.length) {
+        document.getElementById('chartFilesDetails').style.display = 'none';
+        return;
+    }
+    document.getElementById('chartFilesDetails').style.display = '';
+
+    const ctx = canvas.getContext('2d');
+    _charts['chartFiles'] = new Chart(ctx, {
+        type: 'treemap',
+        data: {
+            datasets: [{
+                label: 'Remaining findings',
+                data: tree,
+                key: 'count',
+                backgroundColor(ctx) {
+                    const raw = ctx.raw?._data;
+                    return raw ? sevColor(raw.worstSev) + 'cc' : '#94a3b8cc';
+                },
+                borderColor(ctx) {
+                    const raw = ctx.raw?._data;
+                    return raw ? sevColor(raw.worstSev) : '#94a3b8';
+                },
+                borderWidth: 1,
+                labels: {
+                    display: true,
+                    formatter(ctx) {
+                        const d = ctx.raw?._data;
+                        return d ? [`${d.label}`, `${d.count} finding${d.count !== 1 ? 's' : ''}`] : '';
+                    },
+                    color: '#fff',
+                    font: [{ size: 12, weight: 'bold' }, { size: 11 }],
+                },
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title(items) {
+                            return items[0]?.raw?._data?.file || '';
+                        },
+                        label(item) {
+                            const d = item.raw?._data;
+                            return d ? [`${d.count} finding${d.count !== 1 ? 's' : ''}`, `Worst: ${d.worstSev}`] : '';
+                        },
+                    },
+                },
+            },
+        },
+    });
+}
+
+function renderToolChart(resolvedIds) {
+    destroyChart('chartTool');
+    const canvas = document.getElementById('chartTool');
+    if (!canvas) return;
+
+    const resolved = new Set(resolvedIds || []);
+
+    // Group currentFindings by tool → resolved / remaining counts
+    const toolMap = {};
+    currentFindings.forEach(f => {
+        const t = f.tool || 'unknown';
+        if (!toolMap[t]) toolMap[t] = { resolved: 0, remaining: 0 };
+        if (resolved.has(f.id)) toolMap[t].resolved++;
+        else toolMap[t].remaining++;
+    });
+
+    // Only show tools that have at least one finding
+    const tools = Object.keys(toolMap).filter(t => (toolMap[t].resolved + toolMap[t].remaining) > 0);
+    if (!tools.length) return;
+
+    const ctx = canvas.getContext('2d');
+    _charts['chartTool'] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: tools,
+            datasets: [
+                {
+                    label: 'Resolved',
+                    data: tools.map(t => toolMap[t].resolved),
+                    backgroundColor: '#10b981',
+                    stack: 'a',
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Remaining',
+                    data: tools.map(t => toolMap[t].remaining),
+                    backgroundColor: '#f59e0b',
+                    stack: 'a',
+                    borderRadius: 4,
+                },
+            ],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', align: 'end' },
+                tooltip: {
+                    callbacks: {
+                        footer(items) {
+                            const t = items[0].label;
+                            const total = toolMap[t].resolved + toolMap[t].remaining;
+                            const pct = total > 0 ? Math.round((toolMap[t].resolved / total) * 100) : 0;
+                            return `${pct}% of ${total} findings resolved`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { stepSize: 1, precision: 0 },
+                    grid: { color: '#f1f5f9' },
+                },
+                y: {
+                    stacked: true,
+                    grid: { display: false },
+                },
+            },
+        },
+    });
+}
+
+function animateCount(el, target, suffix, duration) {
+    const start = performance.now();
+    function step(now) {
+        const progress = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = Math.round(eased * target) + suffix;
+        if (progress < 1) requestAnimationFrame(step);
+        else el.textContent = target + suffix;
+    }
+    requestAnimationFrame(step);
+}
+
 function renderVerificationResults(data) {
+    // Visual 1: Headline % improvement
+    const pct = data.before.total > 0
+        ? Math.round((data.resolved / data.before.total) * 100)
+        : 0;
+    const pctEl = document.getElementById('verifyPct');
+    pctEl.classList.remove('is-regressed', 'is-neutral');
+    if (data.new > data.resolved)      pctEl.classList.add('is-regressed');
+    else if (pct === 0)                pctEl.classList.add('is-neutral');
+    animateCount(pctEl, pct, '%', 700);
+    document.getElementById('verifyPctSub').textContent =
+        `${data.resolved} fixed · ${data.remaining} remaining` +
+        (data.new > 0 ? ` · ${data.new} new regressions` : '');
+
     // Score cards
     document.getElementById('verifyResolved').textContent = data.resolved;
     document.getElementById('verifyRemaining').textContent = data.remaining;
@@ -314,16 +752,66 @@ function renderVerificationResults(data) {
     const newCard = document.getElementById('verifyNew').closest('.scorecard');
     newCard.classList.toggle('scorecard-danger', data.new > 0);
 
+    // Visual 2 + 3: Grouped bar + donut
+    renderSeverityChart(data.before, data.after);
+    renderOutcomeChart(data.resolved, data.remaining, data.new);
+
+    // Visual 4: Tool breakdown
+    renderToolChart(data.resolved_ids);
+
+    // Visual 5: File treemap — render when user opens the <details>
+    const details = document.getElementById('chartFilesDetails');
+    const onToggle = () => {
+        if (details.open) {
+            details.removeEventListener('toggle', onToggle);
+            requestAnimationFrame(() => renderFileTreemap(data.resolved_ids));
+        }
+    };
+    destroyChart('chartFiles');
+    details.removeEventListener('toggle', onToggle); // clean up any prior run
+    details.open = false;
+    details.addEventListener('toggle', onToggle);
+
     // Before / after summary badges
     renderSummary(data.before, 'verifyBefore');
     renderSummary(data.after,  'verifyAfter');
 
     // Regression warning
     if (data.new > 0 && data.new_ids && data.new_ids.length) {
-        document.getElementById('regressionIds').textContent = data.new_ids.join('\n');
+        pendingRegressionIds = data.new_ids;
+        document.getElementById('regressionCount').textContent =
+            `${data.new} regression${data.new !== 1 ? 's' : ''} detected —`;
+
+        // Show per-file regression breakdown
+        const listEl = document.getElementById('regressionFileList');
+        const findings = data.new_findings || [];
+        if (findings.length && listEl) {
+            // Group by file
+            const byFile = {};
+            findings.forEach(f => {
+                const file = f.file || '(unknown)';
+                if (!byFile[file]) byFile[file] = [];
+                byFile[file].push(f);
+            });
+            listEl.innerHTML = Object.entries(byFile).map(([file, fList]) => `
+                <div class="regression-file">
+                    <span class="regression-filename">${escHtml(file)}</span>
+                    <span class="regression-file-count">${fList.length} new issue${fList.length !== 1 ? 's' : ''}</span>
+                    <ul class="regression-finding-list">
+                        ${fList.map(f => `<li>
+                            <span class="sev-badge sev-${f.severity||'LOW'}">${f.severity||'?'}</span>
+                            ${f.line ? `<span class="regression-line">L${f.line}</span>` : ''}
+                            <span class="regression-msg">${escHtml(f.message||'')}</span>
+                        </li>`).join('')}
+                    </ul>
+                </div>`).join('');
+        } else if (listEl) {
+            listEl.innerHTML = '';
+        }
+
         show('regressionWarning');
-        document.getElementById('regressionWarning').classList.remove('hidden');
     } else {
+        pendingRegressionIds = [];
         hide('regressionWarning');
     }
 }

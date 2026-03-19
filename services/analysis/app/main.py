@@ -12,10 +12,25 @@ _logger = logging.getLogger(__name__)
 _BOOT_TIME = time.monotonic()
 
 app = FastAPI(
-    title="Analysis Service",
+    title="Quality Repair Tool — P4 Group 17",
     description="Performs static analysis using Bandit, Ruff, Radon, and TruffleHog.",
     version="0.2.0",
+    openapi_tags=[
+        {
+            "name": "health",
+            "description": "Service liveness and tool availability checks.",
+        },
+        {
+            "name": "session",
+            "description": "Session and workspace management — upload ZIP archives or clone GitHub repositories.",
+        },
+        {
+            "name": "analysis",
+            "description": "Run static analysis tools and retrieve unified findings reports.",
+        },
+    ],
 )
+
 
 # Request logging middleware
 @app.middleware("http")
@@ -26,17 +41,21 @@ async def log_requests(request: Request, call_next):
     _logger.info("%s %s → %d (%.0fms)", request.method, request.url.path, response.status_code, duration_ms)
     return response
 
+
 # API routers
 app.include_router(analysis_router)
 
+
 def _check_tools() -> dict[str, bool]:
     import shutil
+
     return {
         "bandit": shutil.which("bandit") is not None,
         "ruff": shutil.which("ruff") is not None,
         "radon": shutil.which("radon") is not None,
         "trufflehog": shutil.which("trufflehog") is not None,
     }
+
 
 @app.get("/health", tags=["health"])
 def health():

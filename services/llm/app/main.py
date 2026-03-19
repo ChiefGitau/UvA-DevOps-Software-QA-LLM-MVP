@@ -17,6 +17,7 @@ app = FastAPI(
     version="0.2.0",
 )
 
+
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -26,17 +27,21 @@ async def log_requests(request: Request, call_next):
     _logger.info("%s %s → %d (%.0fms)", request.method, request.url.path, response.status_code, duration_ms)
     return response
 
+
 # API routers
 app.include_router(repair_router)
 
+
 def _check_tools() -> dict[str, bool]:
     import shutil
+
     return {
         "bandit": shutil.which("bandit") is not None,
         "ruff": shutil.which("ruff") is not None,
         "radon": shutil.which("radon") is not None,
         "trufflehog": shutil.which("trufflehog") is not None,
     }
+
 
 @app.get("/health", tags=["health"])
 def health():

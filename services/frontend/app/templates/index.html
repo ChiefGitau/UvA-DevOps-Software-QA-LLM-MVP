@@ -4,26 +4,85 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quality Repair Tool</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="static/css/styles.css">
 
 </head>
 <body>
+
+<header class="site-header">
+    <div class="header-inner">
+        <div class="header-brand">
+            <svg class="header-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                <path d="m9 12 2 2 4-4"/>
+            </svg>
+            <div>
+                <div class="header-title">Quality Repair Tool</div>
+                <div class="header-subtitle">AI-powered static analysis &amp; automated repair</div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="stepper-bar">
+    <div class="stepper-inner">
+        <div class="step-item active" id="step-1">
+            <div class="step-circle">1</div>
+            <div class="step-label">Source</div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item" id="step-2">
+            <div class="step-circle">2</div>
+            <div class="step-label">Files</div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item" id="step-3">
+            <div class="step-circle">3</div>
+            <div class="step-label">Findings</div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item" id="step-4">
+            <div class="step-circle">4</div>
+            <div class="step-label">Repair</div>
+        </div>
+        <div class="step-connector"></div>
+        <div class="step-item" id="step-5">
+            <div class="step-circle">5</div>
+            <div class="step-label">Verify</div>
+        </div>
+    </div>
+</div>
+
 <div class="container">
-    <h1>🔍 Quality Repair Tool</h1>
 
     <!-- Step 1: Source Input -->
     <div class="card">
         <h2>1. Provide Source Code</h2>
         <div id="status" class="status"></div>
 
-        <div class="input-group">
+        <label class="upload-zone" id="uploadZone" for="zipFile">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <div class="upload-zone-text"><strong>Click to choose</strong> or drag &amp; drop a ZIP file</div>
+            <div class="upload-zone-filename" id="uploadFilename"></div>
             <input type="file" id="zipFile" accept=".zip">
-            <button class="btn-primary" onclick="uploadZip()">Upload ZIP</button>
-        </div>
+            <button class="btn-primary" style="margin-top:.25rem" onclick="event.preventDefault();uploadZip()">Upload ZIP</button>
+        </label>
         <div class="input-group">
             <input type="text" id="gitUrl" placeholder="https://github.com/owner/repo">
             <button class="btn-primary" onclick="cloneRepo()">Clone Repo</button>
         </div>
+    </div>
+
+    <!-- Progress bar (shared, shown during long ops) -->
+    <div class="progress-bar-wrap hidden" id="progressBar">
+        <div class="progress-bar-fill"></div>
     </div>
 
     <!-- Step 2: File Selection -->
@@ -42,9 +101,13 @@
 
     <!-- Step 3: Results -->
     <div class="card hidden" id="resultsSection">
+        <div class="card-busy-overlay hidden" id="resultsBusyOverlay">
+            <span class="overlay-spinner"></span>
+            <span class="overlay-label" id="overlayLabel">Analysing…</span>
+        </div>
         <h2>3. Findings</h2>
         <div class="summary" id="summary"></div>
-        <div style="overflow-x:auto">
+        <div class="findings-table-wrap">
             <table>
                 <thead>
                     <tr>
@@ -61,12 +124,27 @@
                 <tbody id="findingsBody"></tbody>
             </table>
         </div>
+        <div class="empty-state hidden" id="findingsEmpty">
+            <svg viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="40" cy="40" r="36" fill="#f0fdf4" stroke="#10b981" stroke-width="2"/>
+                <path d="M26 40l10 10 18-20" stroke="#10b981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <p>No findings — your code is clean!</p>
+        </div>
     </div>
 
     <!-- Step 4: Repair -->
     <div class="card hidden" id="repairSection">
         <h2>4. LLM Repair</h2>
         <div class="repair-controls">
+            <label for="repairMode">Mode:</label>
+            <div class="mode-select-wrap">
+                <select id="repairMode" style="font-weight:600" onchange="onModeChange()">
+                    <option value="simple"> Simple (fast)</option>
+                    <option value="agent"> Agent pipeline (beta)</option>
+                </select>
+                <span id="modeStatusDot" class="status-dot dot-unknown" title="Checking service…"></span>
+            </div>
             <label for="providerSelect">Model:</label>
             <select id="providerSelect"></select>
             <button class="btn-primary" id="repairBtn" onclick="runRepair()">
@@ -89,7 +167,13 @@
         Run Verification
       </button>
       <div class="hidden" id="verificationResults">
-        <h3>Before vs After</h3>
+
+        <!-- Visual 1: Headline % improvement -->
+        <div class="verify-headline">
+          <span class="verify-pct" id="verifyPct">—</span>
+          <span class="verify-pct-label">issues resolved</span>
+          <p class="verify-pct-sub" id="verifyPctSub"></p>
+        </div>
 
         <!-- Score cards row -->
         <div class="verify-scorecards">
@@ -120,16 +204,48 @@
           </div>
         </div>
 
+        <!-- Visuals 2 + 3: side by side row -->
+        <div class="charts-row">
+          <div class="chart-wrap chart-wrap--bar">
+            <canvas id="chartSeverity"></canvas>
+          </div>
+          <div class="chart-wrap chart-wrap--donut hidden" id="chartOutcomeWrap">
+            <canvas id="chartOutcome"></canvas>
+          </div>
+        </div>
+
+        <!-- Visual 4: Horizontal stacked bar — findings by tool -->
+        <div class="chart-wrap chart-wrap--tool">
+          <canvas id="chartTool"></canvas>
+        </div>
+
+        <!-- Visual 5: File treemap (collapsible) -->
+        <details class="chart-details" id="chartFilesDetails">
+          <summary>Remaining findings by file</summary>
+          <div class="chart-wrap chart-wrap--treemap">
+            <canvas id="chartFiles"></canvas>
+          </div>
+        </details>
+
         <!-- Regression warning (only shown when new > 0) -->
         <div class="hidden verify-regressions" id="regressionWarning">
-          <strong>⚠️ Regressions detected</strong> — the LLM introduced new issues while patching.
-          Consider re-running repair on these finding IDs:
-          <pre id="regressionIds"></pre>
+          <div class="regression-header">
+            <div class="regression-text">
+              <strong id="regressionCount"></strong> new issues were introduced while patching.
+              <span class="regression-sub">The LLM modified code in a way that created regressions. Click below to re-run repair targeting only these findings.</span>
+            </div>
+            <button class="btn-primary btn-sm" id="reRepairBtn" onclick="reRunRepair()">
+              Re-repair regressions
+            </button>
+          </div>
+          <div id="regressionFileList" class="regression-file-list"></div>
         </div>
       </div>
     </div>
 
 </div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-treemap@2/dist/chartjs-chart-treemap.umd.min.js"></script>
 <script src="static/js/app.js"></script>
 </body>
 </html>
