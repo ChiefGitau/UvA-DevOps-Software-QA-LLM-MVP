@@ -497,7 +497,7 @@ details summary { cursor: pointer; font-size: .85rem; color: var(--primary); mar
     color: var(--muted);
 
     /* ── Responsive ──────────────────────────────────────────────── */
-@media (max-width: 640 px) {
+@media (max-width: 640px) {
     .input-row {
         flex-direction: column;
     }
