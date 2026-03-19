@@ -1,7 +1,6 @@
 """Tests for repair prompt builder (QALLM-12)."""
 
 from app.domain.models import Finding
-
 from app.repair.prompt_builder import SYSTEM_PROMPT, build_file_repair_prompt, build_repair_prompt
 
 

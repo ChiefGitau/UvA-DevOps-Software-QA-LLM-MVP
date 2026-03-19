@@ -1,10 +1,10 @@
 import logging
 import time
 
-from app.core.logging import setup_logging
 from fastapi import FastAPI, Request
 
 from app.api.analysis_routes import router as analysis_router
+from app.core.logging import setup_logging
 
 # Configure structured JSON logging
 setup_logging()

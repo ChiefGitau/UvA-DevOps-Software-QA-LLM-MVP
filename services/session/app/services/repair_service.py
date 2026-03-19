@@ -25,13 +25,12 @@ import logging
 from collections import defaultdict
 from dataclasses import asdict
 
-from app.domain.models import Finding, Patch
-from app.services.session_service import SessionService
-
 from app.core.config import settings
 from app.core.containers import build_llm_registry
+from app.domain.models import Finding, Patch
 from app.llm.base import LLMResponse, TokenTracker
 from app.repair.prompt_builder import SYSTEM_PROMPT, build_file_repair_prompt
+from app.services.session_service import SessionService
 
 logger = logging.getLogger(__name__)
 

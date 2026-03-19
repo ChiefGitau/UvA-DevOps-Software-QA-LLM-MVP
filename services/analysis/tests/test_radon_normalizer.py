@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
+
 from app.normalizers.base import NormalizationContext
 from app.normalizers.radon_normalizer import RadonNormalizer
 

@@ -3,6 +3,7 @@
 from pathlib import Path
 
 import pytest
+
 from app.analyzers.bandit import BanditAnalyzer
 from app.analyzers.radon import RadonAnalyzer
 from app.analyzers.registry import AnalyzerRegistry
