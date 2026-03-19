@@ -181,7 +181,8 @@ jobs:
             AnthropicApiKey=${{ secrets.ANTHROPIC_API_KEY }},
             OllamaBaseUrl=${{ secrets.OLLAMA_BASE_URL }},
             GitHubUsername=chiefgitau,
-            GitHubToken=${{ secrets.PAT }}
+            GitHubToken=${{ secrets.PAT }},
+            ImageTag=${{ github.event.workflow_run.head_sha }}
 
       - name: Force ECS redeployment
         run: |

@@ -28,6 +28,10 @@ Parameters:
   OllamaBaseUrl:
     Type: String
     Default: ""
+  ImageTag:
+    Type: String
+    Default: "latest"
+    Description: "Docker image tag to deploy (Git SHA passed by CD pipeline)"
 
 Resources:
   # --- VPC Networking ---
@@ -349,7 +353,7 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: session-service
-          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-session:latest"
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-session:${ImageTag}"
           RepositoryCredentials:
             CredentialsParameter: !Ref GHCRSecret
           PortMappings:
@@ -420,7 +424,7 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: analysis-service
-          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-analysis:latest"
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-analysis:${ImageTag}"
           RepositoryCredentials:
             CredentialsParameter: !Ref GHCRSecret
           PortMappings:
@@ -491,7 +495,7 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: llm-service
-          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-llm:latest"
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-llm:${ImageTag}"
           RepositoryCredentials:
             CredentialsParameter: !Ref GHCRSecret
           PortMappings:
@@ -569,7 +573,7 @@ Resources:
       TaskRoleArn: !GetAtt ECSTaskRole.Arn
       ContainerDefinitions:
         - Name: llm-agent-service
-          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-llm-agent:latest"
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-llm-agent:${ImageTag}"
           RepositoryCredentials:
             CredentialsParameter: !Ref GHCRSecret
           PortMappings:
@@ -640,7 +644,7 @@ Resources:
       ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
       ContainerDefinitions:
         - Name: frontend
-          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-frontend:latest"
+          Image: !Sub "ghcr.io/${GitHubUsername}/uva-devops-software-qa-llm-mvp-frontend:${ImageTag}"
           RepositoryCredentials:
             CredentialsParameter: !Ref GHCRSecret
           PortMappings:
